@@ -15,8 +15,7 @@ ELECTRONET_TEMPLATE_SCHEMA = 'Facturaev3_2.xsd'
 MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class Invoice:
-    __metaclass__ = PoolMeta
+class Invoice(metaclass=PoolMeta):
     __name__ = 'account.invoice'
 
     @classmethod
@@ -38,10 +37,10 @@ class Invoice:
             schema_file_path = os.path.join(MODULE_PATH,
                 ELECTRONET_TEMPLATE_SCHEMA)
             invoice._validate_facturae(facturae_content, schema_file_path)
-            invoice_facturae = facturae_content
+            invoice_facturae = str(facturae_content)
             fname = '%s/%s' % (ELECTRONET,
                 invoice.invoice_facturae_filename.replace('.xsig', '.xml'))
-            with open(fname, 'w') as output_file:
+            with open(fname, 'w', encoding='utf-8') as output_file:
                 output_file.write(invoice_facturae)
             to_write[0].append(invoice)
             to_write += ({'invoice_facturae': invoice_facturae},)
@@ -73,8 +72,7 @@ class Invoice:
             self._get_content_to_render(), ).encode('utf-8')
 
 
-class GenerateFacturaeStart:
-    __metaclass__ = PoolMeta
+class GenerateFacturaeStart(metaclass=PoolMeta):
     __name__ = 'account.invoice.generate_facturae.start'
 
     @classmethod

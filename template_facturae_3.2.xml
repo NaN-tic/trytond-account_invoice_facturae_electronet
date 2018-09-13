@@ -7,7 +7,7 @@
         <InvoiceIssuerType>EM</InvoiceIssuerType>
         {# As InvoiceIssuerType != TE, ThirdParty element is not generated #}
         <Batch>
-            <BatchIdentifier>{{ ('%s%s' % (invoice.company.party.vat_code, invoice.number))[:70] }}</BatchIdentifier>
+            <BatchIdentifier>{{ ('%s%s' % (invoice.company.party.tax_identifier.code, invoice.number))[:70] }}</BatchIdentifier>
             <InvoicesCount>1</InvoicesCount>
             <TotalInvoicesAmount>
                 <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
@@ -39,7 +39,7 @@
             <TaxIdentification>
                 <PersonTypeCode>{{ invoice.company.party.facturae_person_type }}</PersonTypeCode>
                 <ResidenceTypeCode>R</ResidenceTypeCode>
-                <TaxIdentificationNumber>{{ invoice.company.party.vat_code[:30] }}</TaxIdentificationNumber>
+                <TaxIdentificationNumber>{{ invoice.company.party.tax_identifier.code[:30] }}</TaxIdentificationNumber>
             </TaxIdentification>
             {# Optional. It could be the ID or the code #}
             <PartyIdentification>{{ invoice.company.party.id_electronet }}</PartyIdentification>
@@ -62,7 +62,7 @@
             <TaxIdentification>
                 <PersonTypeCode>{{ invoice.party.facturae_person_type }}</PersonTypeCode>
                 <ResidenceTypeCode>R</ResidenceTypeCode>
-                <TaxIdentificationNumber>{{ invoice.party.vat_code[:30] }}</TaxIdentificationNumber>
+                <TaxIdentificationNumber>{{ invoice.party.tax_identifier.code[:30] }}</TaxIdentificationNumber>
             </TaxIdentification>
             {# Optional. It could be the ID or the code #}
             <PartyIdentification>{{ invoice.party.id_electronet }}</PartyIdentification>

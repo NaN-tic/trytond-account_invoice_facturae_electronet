@@ -1,13 +1,13 @@
-# This file is part account_invoice_facturae_electronet module for Tryton.
-# The COPYRIGHT file at the top level of this repository contains
-# the full copyright notices and license terms.
-import unittest
+# The COPYRIGHT file at the top level of this repository contains the full
+# copyright notices and license terms.
+# import doctest
 import os.path
+import unittest
 from decimal import Decimal
+import trytond.tests.test_tryton
 from trytond.pool import Pool
 from trytond.transaction import Transaction
 from trytond.tests.test_tryton import ModuleTestCase, with_transaction
-from trytond.tests.test_tryton import suite as test_suite
 from trytond.modules.account.tests import get_fiscalyear, create_chart
 from trytond.modules.company.tests import create_company, set_company
 from trytond.modules.account_invoice.tests import set_invoice_sequences
@@ -22,6 +22,7 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
     @with_transaction()
     def test_invoice_generation(self):
         'Test invoice generation'
+
         pool = Pool()
         Account = pool.get('account.account')
         FiscalYear = pool.get('account.fiscalyear')
@@ -30,6 +31,7 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
         Party = pool.get('party.party')
         PaymentTerm = pool.get('account.invoice.payment_term')
         ProductUom = pool.get('product.uom')
+        ProductCategory = pool.get('product.category')
         ProductTemplate = pool.get('product.template')
         Product = pool.get('product.product')
         Tax = pool.get('account.tax')
@@ -41,13 +43,13 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
 
         country = Country(name='Country', code='ES', code3='ESP')
         country.save()
-        subdivision = Subdivision(name='Subdivision', country=country,
-            code='SUB', type='area')
+        subdivision = Subdivision(
+            name='Subdivision', country=country, code='SUB', type='area')
         subdivision.save()
 
         company = create_company()
         currency = create_currency('EUR')
-        add_currency_rate(currency, Decimal(1.0))
+        add_currency_rate(currency, 1.0)
 
         tax_identifier = PartyIdentifier()
         tax_identifier.type = 'eu_vat'
@@ -61,6 +63,11 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
         company.party.id_electronet = '100_SELLER'
         company.party.save()
         company.save()
+
+        # Save certificate into company
+        with open(os.path.join(
+                    CURRENT_PATH, 'certificate.pfx'), 'rb') as cert_file:
+            company.facturae_certificate = cert_file.read()
 
         payment_term, = PaymentTerm.create([{
                     'name': '20 days, 40 days',
@@ -87,14 +94,11 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
                     }])
 
         with set_company(company):
+            create_chart(company, tax=True)
+
             fiscalyear = set_invoice_sequences(get_fiscalyear(company))
             fiscalyear.save()
             FiscalYear.create_period([fiscalyear])
-            create_chart(company, tax=True)
-
-        with Transaction().set_user(0), \
-                Transaction().set_context(company=company.id, user=0,
-                    _check_access=False):
 
             payment_receivable, = PaymentType.create([{
                     'name': 'Payment Receivable',
@@ -107,13 +111,14 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
             tax_account, = Account.search([
                     ('name', '=', 'Main Tax'),
                     ])
-            vat21 = Tax()
-            vat21.name = vat21.description = '21% VAT'
-            vat21.type = 'percentage'
-            vat21.rate = Decimal('0.21')
-            vat21.invoice_account = tax_account
-            vat21.report_type = '05'
-            vat21.credit_note_account = tax_account
+            with Transaction().set_user(0):
+                vat21 = Tax()
+                vat21.name = vat21.description = '21% VAT'
+                vat21.type = 'percentage'
+                vat21.rate = Decimal('0.21')
+                vat21.invoice_account = tax_account
+                vat21.report_type = '05'
+                vat21.credit_note_account = tax_account
 
             vat21.save()
 
@@ -161,59 +166,68 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
                                         }])],
                         }])
 
+
+            account_category = ProductCategory()
+            account_category.name = 'Account Category'
+            account_category.accounting = True
+            account_category.account_expense = expense
+            account_category.account_revenue = revenue
+            account_category.customer_taxes = [vat21]
+            account_category.save()
+
             unit, = ProductUom.search([('name', '=', 'Unit')])
             template = ProductTemplate()
             template.name = 'product'
             template.default_uom = unit
             template.type = 'service'
             template.list_price = Decimal('40')
-            template.cost_price = Decimal('25')
-            template.account_expense = expense
-            template.account_revenue = revenue
-            template.customer_taxes = [vat21]
+            template.account_category = account_category
             template.save()
             product = Product()
             product.template = template
             product.save()
 
-            invoice = Invoice()
-            invoice.type = 'out'
-            invoice.on_change_type()
-            invoice.party = party
-            invoice.on_change_party()
-            invoice.payment_type = payment_receivable
-            invoice.payment_term = term
-            invoice.currency = currency
-            invoice.company = company
+            currency = create_currency('Eur')
+            add_currency_rate(currency, 1)
 
-            line1 = InvoiceLine()
-            line1.account = revenue
-            line1.product = product
-            line1.on_change_product()
-            line1.on_change_account()
-            line1.description = 'TestLine2'
-            line1.quantity = 5
-            line1.unit_price = Decimal('40')
+            with Transaction().set_user(0):
+                invoice = Invoice()
+                invoice.type = 'out'
+                invoice.on_change_type()
+                invoice.party = party
+                invoice.on_change_party()
+                invoice.payment_type = payment_receivable
+                invoice.payment_term = term
+                invoice.currency = currency
+                invoice.company = company
 
-            line2 = InvoiceLine()
-            line2.account = revenue
-            line2.product = product
-            line2.on_change_product()
-            line2.on_change_account()
-            line2.description = 'TestLine2'
-            line2.quantity = 1
-            line2.unit_price = Decimal(20)
+                line1 = InvoiceLine()
+                line1.product = product
+                line1.on_change_product()
+                line1.on_change_account()
+                line1.quantity = 5
+                line1.unit_price = Decimal('40')
 
-            invoice.lines = [line1, line2]
-            invoice.on_change_lines()
-            invoice.save()
+                line2 = InvoiceLine()
+                line2.account = revenue
+                line2.on_change_account()
+                line2.product = product
+                line2.on_change_product()
+                line2.description = 'Test'
+                line2.quantity = 1
+                line2.unit_price = Decimal(20)
 
-        Invoice.post([invoice])
-        Invoice.generate_facturae_electronet([invoice])
+                invoice.lines = [line1, line2]
+                invoice.on_change_lines()
+
+                invoice.save()
+                Invoice.post([invoice])
+
+            Invoice.generate_facturae_electronet([invoice])
 
 
 def suite():
-    suite = test_suite()
+    suite = trytond.tests.test_tryton.suite()
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(
             AccountInvoiceFacturaeElectronetTestCase))
     return suite
