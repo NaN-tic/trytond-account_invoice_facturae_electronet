@@ -1,0 +1,336 @@
+{% from "template_facturae_macros.xml" import administrative_center, address, contact %}<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<namespace:Facturae xmlns:namespace2="http://uri.etsi.org/01903/v1.2.2#" xmlns:namespace3="http://www.w3.org/2000/09/xmldsig#" xmlns:namespace="http://www.facturae.es/Facturae/2009/v3.2/Facturae">
+    <FileHeader>
+        <SchemaVersion>3.2</SchemaVersion>
+        <Modality>I</Modality>
+        {# The invoice is signed by Issuer (the company, only supported out invoices) #}
+        <InvoiceIssuerType>EM</InvoiceIssuerType>
+        {# As InvoiceIssuerType != TE, ThirdParty element is not generated #}
+        <Batch>
+            <BatchIdentifier>{{ ('%s%s' % (invoice.company.party.vat_code, invoice.number))[:70] }}</BatchIdentifier>
+            <InvoicesCount>1</InvoicesCount>
+            <TotalInvoicesAmount>
+                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                {% if invoice.currency != euro %}
+                <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
+                {% endif %}
+            </TotalInvoicesAmount>
+            <TotalOutstandingAmount>
+                {# TODO: it must to get amount_to_pay? #}
+                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                {% if invoice.currency != euro %}
+                <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
+                {% endif %}
+            </TotalOutstandingAmount>
+            <TotalExecutableAmount>
+                {# TODO: it must to get amount_to_pay? #}
+                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                {% if invoice.currency != euro %}
+                <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
+                {% endif %}
+            </TotalExecutableAmount>
+            <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>
+        </Batch>
+        {# FactoryAssignmentData optional: not supported (factoring not supported) #}
+    </FileHeader>
+
+    <Parties>
+        <SellerParty>
+            <TaxIdentification>
+                <PersonTypeCode>{{ invoice.company.party.facturae_person_type }}</PersonTypeCode>
+                <ResidenceTypeCode>R</ResidenceTypeCode>
+                <TaxIdentificationNumber>{{ invoice.company.party.vat_code[:30] }}</TaxIdentificationNumber>
+            </TaxIdentification>
+            {# Optional. It could be the ID or the code #}
+            <PartyIdentification>{{ invoice.company.party.id_electronet }}</PartyIdentification>
+            <AdministrativeCentres>
+                {% if invoice.company.party.oficina_contable and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.oficina_contable.rstrip(), '01', invoice.company.party) }}{% endif %}
+                {% if invoice.company.party.organo_gestor and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.organo_gestor.rstrip(), '02', invoice.company.party) }}{% endif %}
+                {% if invoice.company.party.unidad_tramitadora and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.unidad_tramitadora.rstrip(), '03', invoice.company.party) }}{% endif %}
+                {% if invoice.company.party.organo_proponente and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.organo_proponente.replace('\n', '').rstrip(), '04', invoice.company.party) }}{% endif %}
+            </AdministrativeCentres>
+            <LegalEntity>
+                <CorporateName>{{ invoice.company.party.name[:80] }}</CorporateName>
+                {{ address(invoice.company.party.addresses[0]) }}
+                {% if invoice.company.party.contact_mechanisms %}
+                {{ contact(invoice.company.party) }}
+                {% endif %}
+            </LegalEntity>
+        </SellerParty>
+
+        <BuyerParty>
+            <TaxIdentification>
+                <PersonTypeCode>{{ invoice.party.facturae_person_type }}</PersonTypeCode>
+                <ResidenceTypeCode>R</ResidenceTypeCode>
+                <TaxIdentificationNumber>{{ invoice.party.vat_code[:30] }}</TaxIdentificationNumber>
+            </TaxIdentification>
+            {# Optional. It could be the ID or the code #}
+            <PartyIdentification>{{ invoice.party.id_electronet }}</PartyIdentification>
+            <AdministrativeCentres>
+                {% if invoice.party.oficina_contable %}{{ administrative_center(invoice.party.oficina_contable, '01', invoice.party) }}{% endif %}
+                {% if invoice.party.organo_gestor %}{{ administrative_center(invoice.party.organo_gestor, '02', invoice.party) }}{% endif %}
+                {% if invoice.party.unidad_tramitadora %}{{ administrative_center(invoice.party.unidad_tramitadora, '03', invoice.party) }}{% endif %}
+                {% if invoice.party.organo_proponente %}{{ administrative_center(invoice.party.organo_proponente, '04', invoice.party) }}{% endif %}
+            </AdministrativeCentres>
+            <LegalEntity>
+                <CorporateName>{{ invoice.party.name and invoice.party.name[:80] or invoice.party.code[:80] }}</CorporateName>
+                {% if invoice.party.trade_name %}
+                <TradeName>{{ invoice.party.trade_name[:40] }}</TradeName>
+                {% endif %}
+                {# RegistrationData optional: not supported #}
+                {{ address(invoice.invoice_address) }}
+                {% if invoice.party.contact_mechanisms %}
+                {{ contact(invoice.party) }}
+                {% endif %}
+            </LegalEntity>
+        </BuyerParty>
+    </Parties>
+
+    <Invoices>
+        <Invoice>
+            <InvoiceHeader>
+                <InvoiceNumber>{{ invoice.number[:20] }}</InvoiceNumber>
+                {# InvoiceSeriesCode optional: not supported #}
+                {# TODO: FA (Factura Simplificada) not supported #}
+                <InvoiceDocumentType>FC</InvoiceDocumentType>
+                {# TODO: Types not supported:
+                - OC (O. Recapitulativa)
+                - CO (Duplicado Original)
+                - CR, (D. Rectificativa)
+                - CC (D. Recapitulativa)
+                #}
+                <InvoiceClass>{{ 'OO' if not invoice.credited_invoices else 'OR' }}</InvoiceClass>
+                {% if invoice.credited_invoices %}
+                <Corrective>
+                    <InvoiceNumber>{{ invoice.credited_invoices and invoice.credited_invoices[0].number[:20] }}</InvoiceNumber>
+                    {# InvoiceSeriesCode Optional: not supported #}
+                    <ReasonCode>{{ invoice.rectificative_reason_code }}</ReasonCode>
+                    <ReasonDescription>{{ invoice.rectificative_reason_spanish_description }}</ReasonDescription>
+                    {# TODO: Methods not supported:
+                    - 02 (solo se
+                    anotan los detalles ya rectificados)
+                    - 03 (Rectificación por
+                    descuento por volumen de operaciones durante un periodo)
+                    - 04 (Autorizadas por la Agencia Tributaria)
+                    #}
+                    <CorrectionMethod>01</CorrectionMethod>
+                    <CorrectionMethodDescription>Rectificación Íntegra</CorrectionMethodDescription>
+                    {# AdditionalReasonDescription optional: not supported #}
+                </Corrective>
+                {% endif %}
+            </InvoiceHeader>
+            <InvoiceIssueData>
+                <IssueDate>{{ invoice.invoice_date.isoformat() }}</IssueDate>
+                {# OperationDate required only if is different to IssueDate, but we consider OperatinDate==invoice_date: not supported #}
+                {# PlaceOfIssue optional: not supported #}
+                {# InvoicingPeriod required only for Recapitulativas or temporary service: not supported #}
+                <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>
+                <TaxCurrencyCode>EUR</TaxCurrencyCode>
+                <LanguageName>es</LanguageName>
+            </InvoiceIssueData>
+            <TaxesOutputs>
+                {% for invoice_tax in invoice.taxes_outputs %}
+                <Tax>
+                    <TaxTypeCode>{{ invoice_tax.tax.report_type }}</TaxTypeCode>
+                    <TaxRate>{{ invoice_tax.tax.rate * 100 }}</TaxRate>
+                    <TaxableBase>
+                        <TotalAmount>{{ invoice_tax.base }}</TotalAmount>
+                        {% if invoice.currency != euro %}
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.base, euro) }}</EquivalentInEuros>
+                        {% endif %}
+                    </TaxableBase>
+                    <TaxAmount>
+                        <TotalAmount>{{ invoice_tax.amount }}</TotalAmount>
+                        {% if invoice.currency != euro %}
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.amount, euro) }}</EquivalentInEuros>
+                        {% endif %}
+                    </TaxAmount>
+                    {# TODO: special taxes not supported
+                    - SpecialTaxableBase
+                    - SpecialTaxAmount
+                    #}
+                    {% if invoice_tax.tax.recargo_equivalencia %}
+                    {# TODO: EquivalenceSurchace must to have its own Tax entry or it must to go to the IVA line? TaxRate == EquivalenceSurcharge and TaxAmount == EquivalenceSurchargeAmount? #}
+                    <EquivalenceSurcharge>{{ (invoice_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</EquivalenceSurcharge>
+                    <EquivalenceSurchargeAmount>
+                        <TotalAmount>{{ invoice_tax.amount }}</TotalAmount>
+                        {% if invoice.currency != euro %}
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.amount, euro) }}</EquivalentInEuros>
+                        {% endif %}
+                    </EquivalenceSurchargeAmount>
+                    {% endif %}
+                </Tax>
+                {% endfor %}
+            </TaxesOutputs>
+            {% if invoice.taxes_withheld %}
+            <TaxesWithheld>
+                {% for invoice_tax in invoice.taxes_withheld %}
+                <Tax>
+                    <TaxTypeCode>{{ invoice_tax.tax.report_type }}</TaxTypeCode>
+                    <TaxRate>{{ invoice_tax.tax.rate * 100 }}</TaxRate>
+                    <TaxableBase>
+                        <TotalAmount>{{ invoice_tax.base }}</TotalAmount>
+                        {% if invoice.currency != euro %}
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.base, euro) }}</EquivalentInEuros>
+                        {% endif %}
+                    </TaxableBase>
+                    <TaxAmount>
+                        <TotalAmount>{{ invoice_tax.amount }}</TotalAmount>
+                        {% if invoice.currency != euro %}
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.amount, euro) }}</EquivalentInEuros>
+                        {% endif %}
+                    </TaxAmount>
+                </Tax>
+                {% endfor %}
+            </TaxesWithheld>
+            {% endif %}
+            <InvoiceTotals>
+                <TotalGrossAmount>{{ invoice.untaxed_amount }}</TotalGrossAmount>
+                {# TODO: GeneralDiscounts and TotalGeneralDiscounts (account_invoice_discount_global) not supported #}
+                {# TODO: GeneralSurcharges and TotalGeneralSurcharges not supported #}
+                <TotalGrossAmountBeforeTaxes>{{ invoice.untaxed_amount }}</TotalGrossAmountBeforeTaxes>
+                <TotalTaxOutputs>{{ invoice.taxes_outputs | sum(attribute='amount', start=Decimal('0.00')) }}</TotalTaxOutputs>
+                <TotalTaxesWithheld>{{ invoice.taxes_withheld | sum(attribute='amount', start=Decimal('0.00')) }}</TotalTaxesWithheld>
+                <InvoiceTotal>{{ invoice.total_amount }}</InvoiceTotal>
+                {# TODO: optional, not supported
+                - Subsidies
+                - PaymentsOnAccount, TotalPaymentsOnAccount
+                - ReimbursableExpenses, TotalReimbursableExpenses (suplidos?)
+                - TotalFinancialExpenses (account_payment_type_cost?)
+                - AmountsWithheld
+                #}
+                <TotalOutstandingAmount>{{ invoice.total_amount }}</TotalOutstandingAmount>
+                <TotalExecutableAmount>{{ invoice.total_amount }}</TotalExecutableAmount>
+            </InvoiceTotals>
+            <Items>
+                {% for line in invoice.lines if line.type == 'line' %}
+                <InvoiceLine>
+                    {# TODO: optional, not supported
+                    - Issuer/ReceiverContractReference, Issuer/ReceiverContractDate (contract)
+                    - Issuer/ReceiverTransactionReference, Issuer/ReceiverTransactionDate (sale, contract...)
+                    - FileReference, FileDate
+                    - SequenceNumber
+                    - DeliveryNotesReferences (account_invoice_stock)
+                    - LineItemPeriod
+                    - TransactionDate
+                    - Extensions
+                    #}
+                    <ItemDescription>{{ line.description and line.description[:2500] or '' }}</ItemDescription>
+                    <Quantity>{{ line.quantity }}</Quantity>
+                    <UnitOfMeasure>{{ UOM_CODE2TYPE.get(line.unit.symbol, '05') if line.unit else '05' }}</UnitOfMeasure>
+                    <UnitPriceWithoutTax>{{ '%0.6f'|format(line.unit_price) }}</UnitPriceWithoutTax>
+                    <TotalCost>{{ '%0.6f'|format(line.amount) }}</TotalCost>
+                    {# TODO: optional, not supported
+                    - DiscountsAndRebates (account_invoice_discount)
+                    - Charges
+                    #}
+                    <GrossAmount>{{ '%0.6f'|format(line.amount) }}</GrossAmount>
+                    {% if line.taxes_withheld %}
+                    <TaxesWithheld>
+                        {% for line_tax in invoice.taxes_withheld %}
+                        <Tax>
+                            <TaxTypeCode>{{ line_tax.tax.report_type }}</TaxTypeCode>
+                            <TaxRate>{{ line_tax.tax.rate * 100 }}</TaxRate>
+                            <TaxableBase>
+                                <TotalAmount>{{ '%0.2f'|format(line.amount) }}</TotalAmount>
+                                {% if invoice.currency != euro %}
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount, euro) }}</EquivalentInEuros>
+                                {% endif %}
+                            </TaxableBase>
+                            <TaxAmount>
+                                <TotalAmount>{{ '%0.2f'|format(line.amount * line_tax.tax.rate) }}</TotalAmount>
+                                {% if invoice.currency != euro %}
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
+                                {% endif %}
+                            </TaxAmount>
+                        </Tax>
+                        {% endfor %}
+                    </TaxesWithheld>
+                    {% endif %}
+                    <TaxesOutputs>
+                        {% for line_tax in line.taxes_outputs %}
+                        <Tax>
+                            <TaxTypeCode>{{ line_tax.tax.report_type }}</TaxTypeCode>
+                            <TaxRate>{{ line_tax.tax.rate * 100 }}</TaxRate>
+                            <TaxableBase>
+                                <TotalAmount>{{ '%0.2f'|format(line.amount) }}</TotalAmount>
+                                {% if invoice.currency != euro %}
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount, euro) }}</EquivalentInEuros>
+                                {% endif %}
+                            </TaxableBase>
+                            <TaxAmount>
+                                <TotalAmount>{{ '%0.2f'|format(line.amount * line_tax.tax.rate) }}</TotalAmount>
+                                {% if invoice.currency != euro %}
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
+                                {% endif %}
+                            </TaxAmount>
+                            {# TODO: special taxes not supported
+                            - SpecialTaxableBase
+                            - SpecialTaxAmount
+                            #}
+                            {% if line_tax.tax.recargo_equivalencia %}
+                            {# TODO: EquivalenceSurchace must to have its own Tax entry or it must to go to the IVA line? TaxRate == EquivalenceSurcharge and TaxAmount == EquivalenceSurchargeAmount? #}
+                            <EquivalenceSurcharge>{{ (line_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</EquivalenceSurcharge>
+                            <EquivalenceSurchargeAmount>
+                                <TotalAmount>{{ '%0.2f'|format(line.amount * line_tax.tax.rate) }}</TotalAmount>
+                                {% if invoice.currency != euro %}
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
+                                {% endif %}
+                            </EquivalenceSurchargeAmount>
+                            {% endif %}
+                        </Tax>
+                        {% endfor %}
+                    </TaxesOutputs>
+                    {% if line.taxes_additional_line_item_information %}
+                    <AdditionalLineItemInformation>
+                        {% for key, description in line.taxes_additional_line_item_information.items() %}
+                        {{ key }} = {{ description }}
+                        {% endfor %}
+                    </AdditionalLineItemInformation>
+                    {% endif %}
+                    {# TODO: SpecialTaxableEvent not supported #}
+                    {% if line.product and line.product.code %}
+                    <ArticleCode>{{ line.product.code }}</ArticleCode>
+                    {% endif %}
+                </InvoiceLine>
+                {% endfor %}
+            </Items>
+            {% if invoice.payment_details %}
+            <PaymentDetails>
+                {% for move_line in invoice.payment_details %}
+                <Installment>
+                    <InstallmentDueDate>{{ move_line.maturity_date.isoformat() }}</InstallmentDueDate>
+                    <InstallmentAmount>{{ ((move_line.debit - move_line.credit) | abs).quantize(Decimal('0.01')) }}</InstallmentAmount>
+                    <PaymentMeans>{{ move_line.payment_type.facturae_type }}</PaymentMeans>
+                    {% if move_line.payment_type.facturae_type == '04' %}
+                    <AccountToBeCredited>
+                        <IBAN>{% for number in (move_line.bank_account.numbers|selectattr('type', 'equalto', 'iban')) %}{% if loop.first %}{{ number.number_compact }}{% endif %}{% endfor %}</IBAN>
+                        {# Unnecessary if IBAN is supplied: AccountNumber, BankCode, BranchCode, BranchInSpainAddress, OverseasBranchAddress, BIC #}
+                    </AccountToBeCredited>
+                    {% elif move_line.payment_type.facturae_type == '02' %}
+                    <AccountToBeDebited>
+                        <IBAN>{% for number in (move_line.bank_account.numbers|selectattr('type', 'equalto', 'iban')) %}{% if loop.first %}{{ number.number_compact }}{% endif %}{% endfor %}</IBAN>
+                        {# Unnecessary if IBAN is supplied: AccountNumber, BankCode, BranchCode, BranchInSpainAddress, OverseasBranchAddress, BIC #}
+                    </AccountToBeDebited>
+                    {# optional, not supported:
+                    - PaymentReconciliationReference
+                    - CollectionAdditionalInformation
+                    - RegulatoryReportingData (for international operations)
+                    - DebitReconciliationReference
+                    #}
+                    {% endif %}
+                </Installment>
+                {% endfor %}
+            </PaymentDetails>
+            {% endif %}
+            <LegalLiterals>
+                {% for inv_tax in invoice.taxes %}
+                {% if inv_tax.tax and inv_tax.tax.report_description %}
+                <LegalReference>{{ inv_tax.tax.report_description[:250] }}</LegalReference>
+                {% endif %}
+                {% endfor %}
+            </LegalLiterals>
+        </Invoice>
+    </Invoices>
+    {# Extensions optional, not supported #}
+</namespace:Facturae>
