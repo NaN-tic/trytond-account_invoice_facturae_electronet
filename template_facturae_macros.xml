@@ -1,0 +1,36 @@
+{% macro administrative_center(centre_code, role_type_code, party) %}
+        <AdministrativeCentre>
+            <CentreCode>{{ centre_code }}</CentreCode>
+            <RoleTypeCode>{{ role_type_code }}</RoleTypeCode>
+            {{ address(party.addresses[0]) }}
+            {{ contact(party) }}
+            <LogicalOperationalPoint/>
+        </AdministrativeCentre>
+{% endmacro %}
+
+{% macro address(address) %}
+    <AddressInSpain>
+        <Address>{{ address.street[:80] }}</Address>
+        <PostCode>{{ address.zip[:5] }}</PostCode>
+        <Town>{{ address.city[:50] }}</Town>
+        <Province>{{ address.subdivision.name[:20] }}</Province>
+        <CountryCode>{{ address.country.code3 }}</CountryCode>
+    </AddressInSpain>
+{% endmacro %}
+
+{% macro contact(party) %}
+        <ContactDetails>
+            {% if party.phone or party.mobile %}
+            <Telephone>{{ (party.phone or party.mobile)[:15] }}</Telephone>
+            {% endif %}
+            {% if party.fax %}
+            <TeleFax>{{ party.fax[:15] }}</TeleFax>
+            {% endif %}
+            {% if party.email %}
+            <ElectronicMail>{{ party.email[:60] }}</ElectronicMail>
+            {% endif %}
+            {% if party.addresses[0].name %}
+            <ContactPersons>if party.addresses[0].name</ContactPersons>
+            {% endif %}
+        </ContactDetails>
+{% endmacro %}
