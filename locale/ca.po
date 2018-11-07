@@ -1,0 +1,22 @@
+#
+msgid ""
+msgstr "Content-Type: text/plain; charset=utf-8\n"
+
+msgctxt "error:account.invoice:"
+msgid ""
+"Missing Factura-e info in party \"%(party)s\", review the tab Factura-e of "
+"this party: \"%(field)s\""
+msgstr "Informació Factura-e faltant en el tercer \"%(party)s\", revisa a la pestanya"
+"Factura-e del tercer el camp: \"%(field)s\"."
+
+msgctxt "field:party.address,electronet_sale_point:"
+msgid "Electronet Sale Point"
+msgstr "Punt de Venda Electronet"
+
+msgctxt "field:party.party,id_electronet:"
+msgid "Id Electronet"
+msgstr "Id Electronet"
+
+msgctxt "selection:account.invoice.generate_facturae.start,service:"
+msgid "Electronet"
+msgstr "Electronet"
