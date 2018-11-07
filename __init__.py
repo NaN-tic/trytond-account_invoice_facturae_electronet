@@ -11,4 +11,5 @@ def register():
         invoice.Invoice,
         invoice.GenerateFacturaeStart,
         party.Party,
+        party.Address,
         module='account_invoice_facturae_electronet', type_='model')
