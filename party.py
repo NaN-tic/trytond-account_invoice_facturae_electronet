@@ -3,7 +3,7 @@
 from trytond.model import fields
 from trytond.pool import PoolMeta
 
-__all__ = ['Party']
+__all__ = ['Party', 'Address']
 
 
 class Party:
@@ -11,3 +11,9 @@ class Party:
     __name__ = 'party.party'
 
     id_electronet = fields.Char('Id Electronet')
+
+class Address:
+    __metaclass__ = PoolMeta
+    __name__ = 'party.address'
+
+    electronet_sale_point = fields.Char('Electronet Sale Point')

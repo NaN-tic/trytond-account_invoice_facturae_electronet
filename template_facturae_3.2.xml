@@ -1,4 +1,5 @@
-{% from "template_facturae_macros.xml" import administrative_center, address, contact %}<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+{% from "template_facturae_macros.xml" import administrative_center, address, contact %}
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <namespace:Facturae xmlns:namespace2="http://uri.etsi.org/01903/v1.2.2#" xmlns:namespace3="http://www.w3.org/2000/09/xmldsig#" xmlns:namespace="http://www.facturae.es/Facturae/2009/v3.2/Facturae">
     <FileHeader>
         <SchemaVersion>3.2</SchemaVersion>
@@ -70,7 +71,7 @@
                 {% if invoice.party.oficina_contable %}{{ administrative_center(invoice.party.oficina_contable, '01', invoice.party) }}{% endif %}
                 {% if invoice.party.organo_gestor %}{{ administrative_center(invoice.party.organo_gestor, '02', invoice.party) }}{% endif %}
                 {% if invoice.party.unidad_tramitadora %}{{ administrative_center(invoice.party.unidad_tramitadora, '03', invoice.party) }}{% endif %}
-                {% if invoice.party.organo_proponente %}{{ administrative_center(invoice.party.organo_proponente, '04', invoice.party) }}{% endif %}
+                {% if invoice.invoice_address.electronet_sale_point %}{{ administrative_center(invoice.invoice_address.electronet_sale_point, '04', invoice.party) }}{% endif %}
             </AdministrativeCentres>
             <LegalEntity>
                 <CorporateName>{{ invoice.party.name and invoice.party.name[:80] or invoice.party.code[:80] }}</CorporateName>
@@ -215,6 +216,22 @@
                     - TransactionDate
                     - Extensions
                     #}
+                    {% if line.shipments %}
+                    <DeliveryNotesCode>
+                    {% for shipment in line.shipments %}
+                        <DeliveryNote>
+                            <DeliveryNoteNumber>{{ shipment.number or '' }}</DeliveryNoteNumber>
+                        </DeliveryNote>
+                    {% endfor %}
+                    </DeliveryNotesCode>
+                    <DeliveryNotesReferences>
+                    {% for shipment in line.shipments %}
+                        <DeliveryNote>
+                            <DeliveryNoteNumber>{{ shipment.reference or '' }}</DeliveryNoteNumber>
+                        </DeliveryNote>
+                    {% endfor %}
+                    </DeliveryNotesReferences>
+                    {% endif %}
                     <ItemDescription>{{ line.description and line.description[:2500] or '' }}</ItemDescription>
                     <Quantity>{{ line.quantity }}</Quantity>
                     <UnitOfMeasure>{{ UOM_CODE2TYPE.get(line.unit.symbol, '05') if line.unit else '05' }}</UnitOfMeasure>

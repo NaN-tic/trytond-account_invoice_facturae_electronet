@@ -61,6 +61,11 @@ class Invoice:
                         'party': party.rec_name,
                         'field': 'ID Electronet'
                         })
+            elif not self.invoice_address.electronet_sale_point:
+                self.raise_user_error('missing_facturae_party_info', {
+                        'party': party.rec_name,
+                        'field': 'Electronet Sale Point'
+                        })
 
         jinja_env = Environment(
             loader=FileSystemLoader(MODULE_PATH),
