@@ -6,7 +6,7 @@ msgctxt "error:account.invoice:"
 msgid ""
 "Missing Factura-e info in party \"%(party)s\", review the tab Factura-e of "
 "this party: \"%(field)s\""
-msgstr "Información Factura-e faltante en el tercero \"%(party)s\", revisa en la pestaña"
+msgstr "Información Factura-e faltante en el tercero \"%(party)s\", revisa en la pestaña "
 "Factura-e del tercero el campo: \"%(field)s\"."
 
 msgctxt "field:party.address,electronet_sale_point:"
