@@ -2,8 +2,6 @@
 # this repository contains the full copyright notices and license terms.
 from trytond.pool import PoolMeta
 from trytond.config import config
-from trytond import backend
-from trytond.transaction import Transaction
 import os
 from jinja2 import Environment, FileSystemLoader
 
@@ -49,18 +47,25 @@ class Invoice(metaclass=PoolMeta):
 
     def get_facturae(self):
         for party in (self.party, self.company.party):
-            if not (party.oficina_contable or party.organo_gestor or
-                    party.unidad_tramitadora or party.organo_proponente):
+            missing_fields = set()
+            for field in ('oficina_contable', 'organo_gestor',
+                    'unidad_tramitadora'):
+                if not getattr(party, field, False):
+                    missing_fields.add(field)
+
+            if len(missing_fields) > 2:
+                fields = ', '.join(missing_fields)
                 self.raise_user_error('missing_facturae_party_info', {
                         'party': party.rec_name,
-                        'field': '',
+                        'field': fields
                         })
-            elif not party.id_electronet:
+            if not party.id_electronet:
                 self.raise_user_error('missing_facturae_party_info', {
                         'party': party.rec_name,
                         'field': 'ID Electronet'
                         })
-            elif not self.invoice_address.electronet_sale_point:
+
+            if not self.invoice_address.electronet_sale_point:
                 self.raise_user_error('missing_facturae_party_info', {
                         'party': party.rec_name,
                         'field': 'Electronet Sale Point'
