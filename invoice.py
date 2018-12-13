@@ -22,7 +22,10 @@ class Invoice(metaclass=PoolMeta):
         cls._error_messages.update({
             'missing_facturae_party_info': (
                     'Missing Factura-e info in party "%(party)s", '
-                    'review the tab Factura-e of this party: "%(field)s"')
+                    'review the tab Factura-e of this party: "%(field)s"'),
+            'missing_facturae_party_address_info': (
+                    'Missing Factura-e info in party "%(party)s", '
+                    'review the tab General of this party: "%(field)s"')
             })
 
     @classmethod
@@ -66,7 +69,7 @@ class Invoice(metaclass=PoolMeta):
                         })
 
             if not self.invoice_address.electronet_sale_point:
-                self.raise_user_error('missing_facturae_party_info', {
+                self.raise_user_error('missing_facturae_party_address_info', {
                         'party': party.rec_name,
                         'field': 'Electronet Sale Point'
                         })
