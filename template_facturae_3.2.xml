@@ -227,7 +227,7 @@
                     <DeliveryNotesReferences>
                     {% for shipment in line.shipments %}
                         <DeliveryNote>
-                            <DeliveryNoteNumber>{{ shipment.reference or '' }}</DeliveryNoteNumber>
+                            <DeliveryNoteNumber>{{ shipment.origin_reference or '' }}</DeliveryNoteNumber>
                         </DeliveryNote>
                     {% endfor %}
                     </DeliveryNotesReferences>
