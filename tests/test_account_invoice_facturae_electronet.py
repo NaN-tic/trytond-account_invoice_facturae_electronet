@@ -59,6 +59,9 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
         company.party.facturae_residence_type = 'R'
         company.party.organo_proponente = 'Test Organo Proponente'
         company.party.id_electronet = '100_SELLER'
+        company.party.organo_gestor = 'TEST'
+        company.party.unidad_tramitadora = 'TEST'
+        company.party.organo_proponente = 'TEST'
         company.party.save()
         company.save()
 
@@ -129,6 +132,9 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
             party.facturae_residence_type = 'R'
             party.id_electronet = '100_BUYER'
             party.organo_proponente = 'Test Organo Proponente'
+            party.organo_gestor = 'TEST'
+            party.unidad_tramitadora = 'TEST'
+            party.organo_proponente = 'TEST'
             tax_identifier = PartyIdentifier()
             tax_identifier.type = 'eu_vat'
             tax_identifier.code = 'BE0897290877'
@@ -142,6 +148,7 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
                 'zip': '08201',
                 'subdivision': subdivision.id,
                 'country': country.id,
+                'electronet_sale_point': 'TEST',
                 }
 
             address, = Address.create([address_dict])
