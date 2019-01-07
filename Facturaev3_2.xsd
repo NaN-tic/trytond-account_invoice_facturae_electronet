@@ -580,12 +580,6 @@
 					<xs:documentation xml:lang="es"> Número de secuencia o línea del pedido. </xs:documentation>
 				</xs:annotation>
 			</xs:element>
-			<xs:element name="DeliveryNotesCode" type="DeliveryNotesReferencesType" minOccurs="0">
-				<xs:annotation>
-					<xs:documentation xml:lang="en"> Delivery notes codes.</xs:documentation>
-					<xs:documentation xml:lang="es"> Códigos de albaranes. </xs:documentation>
-				</xs:annotation>
-			</xs:element>
 			<xs:element name="DeliveryNotesReferences" type="DeliveryNotesReferencesType" minOccurs="0">
 				<xs:annotation>
 					<xs:documentation xml:lang="en"> Delivery notes references.</xs:documentation>
