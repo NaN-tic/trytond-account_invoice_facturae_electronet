@@ -217,17 +217,13 @@
                     - Extensions
                     #}
                     {% if line.shipments %}
-                    <DeliveryNotesCode>
                     {% for shipment in line.shipments %}
-                        <DeliveryNote>
-                            <DeliveryNoteNumber>{{ shipment.number or '' }}</DeliveryNoteNumber>
-                        </DeliveryNote>
+                    <ReceiverTransactionReference>{{ shipment.origin_reference or '' }}</ReceiverTransactionReference>
                     {% endfor %}
-                    </DeliveryNotesCode>
                     <DeliveryNotesReferences>
                     {% for shipment in line.shipments %}
                         <DeliveryNote>
-                            <DeliveryNoteNumber>{{ shipment.origin_reference or '' }}</DeliveryNoteNumber>
+                            <DeliveryNoteNumber>{{ shipment.number or '' }}</DeliveryNoteNumber>
                         </DeliveryNote>
                     {% endfor %}
                     </DeliveryNotesReferences>
