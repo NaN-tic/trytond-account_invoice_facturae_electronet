@@ -1,6 +1,7 @@
 # This file is part of Tryton.  The COPYRIGHT file at the top level of
 # this repository contains the full copyright notices and license terms.
 from trytond.pool import PoolMeta
+from trytond.model import fields
 from trytond.config import config
 import os
 from jinja2 import Environment, FileSystemLoader
@@ -16,6 +17,9 @@ MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 class Invoice(metaclass=PoolMeta):
     __name__ = 'account.invoice'
 
+    sale_point_code = fields.Function(fields.Char('Sale Point Code'),
+        'get_sale_point_code')
+
     @classmethod
     def __setup__(cls):
         super(Invoice, cls).__setup__()
@@ -27,6 +31,17 @@ class Invoice(metaclass=PoolMeta):
                     'Missing Factura-e info in party "%(party)s", '
                     'review the tab General of this party: "%(field)s"')
             })
+
+    @classmethod
+    def get_sale_point_code(cls, invoices, name):
+        sale_points = {}
+        for invoice in invoices:
+            sale_point = u''
+            address = invoice.shipment_origin_address
+            if address:
+                sale_point = address.electronet_sale_point
+            sale_points[invoice.id] = sale_point
+        return sale_points
 
     @classmethod
     def generate_facturae_electronet(cls, invoices, certificate_password=None):
