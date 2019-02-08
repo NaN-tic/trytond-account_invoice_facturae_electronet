@@ -4,6 +4,8 @@ from trytond.pool import PoolMeta
 from trytond.config import config
 import os
 from jinja2 import Environment, FileSystemLoader
+from trytond.i18n import gettext
+from trytond.exceptions import UserError
 
 __all__ = ['Invoice', 'GenerateFacturaeStart']
 
@@ -15,18 +17,6 @@ MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class Invoice(metaclass=PoolMeta):
     __name__ = 'account.invoice'
-
-    @classmethod
-    def __setup__(cls):
-        super(Invoice, cls).__setup__()
-        cls._error_messages.update({
-            'missing_facturae_party_info': (
-                    'Missing Factura-e info in party "%(party)s", '
-                    'review the tab Factura-e of this party: "%(field)s"'),
-            'missing_facturae_party_address_info': (
-                    'Missing Factura-e info in party "%(party)s", '
-                    'review the tab General of this party: "%(field)s"')
-            })
 
     @classmethod
     def generate_facturae_electronet(cls, invoices, certificate_password=None):
@@ -58,21 +48,18 @@ class Invoice(metaclass=PoolMeta):
 
             if len(missing_fields) > 2:
                 fields = ', '.join(missing_fields)
-                self.raise_user_error('missing_facturae_party_info', {
-                        'party': party.rec_name,
-                        'field': fields
-                        })
+                raise UserError(gettext('missing_facturae_party_info',
+                        party=party.rec_name,
+                        field=fields))
             if not party.id_electronet:
-                self.raise_user_error('missing_facturae_party_info', {
-                        'party': party.rec_name,
-                        'field': 'ID Electronet'
-                        })
+                raise UserError(gettext('missing_facturae_party_info',
+                        party=party.rec_name,
+                        field='ID Electronet'))
 
             if not self.invoice_address.electronet_sale_point:
-                self.raise_user_error('missing_facturae_party_address_info', {
-                        'party': party.rec_name,
-                        'field': 'Electronet Sale Point'
-                        })
+                raise UserError(gettext('missing_facturae_party_address_info',
+                        party=party.rec_name,
+                        field='Electronet Sale Point'))
 
         jinja_env = Environment(
             loader=FileSystemLoader(MODULE_PATH),
