@@ -109,7 +109,7 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
                     'company': company.id,
                     'facturae_type': '01',
                     }])
-            revenue, = Account.search([('type.revenye', '=', True)])
+            revenue, = Account.search([('type.revenue', '=', True)])
             expense, = Account.search([('type.expense', '=', True)])
             tax_account, = Account.search([
                     ('name', '=', 'Main Tax'),
