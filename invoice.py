@@ -97,8 +97,9 @@ class Invoice:
             )
         jinja_template = self._get_jinja_template(jinja_env,
             ELECTRONET_TEMPLATE)
-        return jinja_template.render(
+        content = jinja_template.render(
             self._get_content_to_render(), ).encode('utf-8')
+        return content.replace('&', '&amp;')
 
 
 class GenerateFacturaeStart:
