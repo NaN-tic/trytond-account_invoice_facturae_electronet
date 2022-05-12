@@ -1,4 +1,8 @@
 {% from "template_facturae_macros.xml" import administrative_center, address, contact %}
+{% set corrective = invoice.untaxed_amount < 0 %}
+{% set untaxed_amount = Decimal(invoice.untaxed_amount|abs).quantize(Decimal('0.01')) %}
+{% set total_amount = Decimal(invoice.total_amount|abs).quantize(Decimal('0.01')) %}
+{% set taxes = namespace(outputs=Decimal('0.00'), withheld=Decimal('0.00')) %}
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <namespace:Facturae xmlns:namespace2="http://uri.etsi.org/01903/v1.2.2#" xmlns:namespace3="http://www.w3.org/2000/09/xmldsig#" xmlns:namespace="http://www.facturae.es/Facturae/2009/v3.2/Facturae">
     <FileHeader>
@@ -11,23 +15,23 @@
             <BatchIdentifier>{{ ('%s%s' % (invoice.company.party.vat_code, invoice.number))[:70] }}</BatchIdentifier>
             <InvoicesCount>1</InvoicesCount>
             <TotalInvoicesAmount>
-                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                <TotalAmount>{{ total_amount }}</TotalAmount>
                 {% if invoice.currency != euro %}
-                <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
+                <EquivalentInEuros>{{ Currency.compute(invoice.currency, total_amount, euro) }}</EquivalentInEuros>
                 {% endif %}
             </TotalInvoicesAmount>
             <TotalOutstandingAmount>
                 {# TODO: it must to get amount_to_pay? #}
-                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                <TotalAmount>{{ total_amount }}</TotalAmount>
                 {% if invoice.currency != euro %}
-                <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
+                <EquivalentInEuros>{{ Currency.compute(invoice.currency, total_amount, euro) }}</EquivalentInEuros>
                 {% endif %}
             </TotalOutstandingAmount>
             <TotalExecutableAmount>
                 {# TODO: it must to get amount_to_pay? #}
-                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                <TotalAmount>{{ total_amount }}</TotalAmount>
                 {% if invoice.currency != euro %}
-                <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
+                <EquivalentInEuros>{{ Currency.compute(invoice.currency, total_amount, euro) }}</EquivalentInEuros>
                 {% endif %}
             </TotalExecutableAmount>
             <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>
@@ -100,7 +104,7 @@
                 - CR, (D. Rectificativa)
                 - CC (D. Recapitulativa)
                 #}
-                <InvoiceClass>{{ 'OO' if not invoice.credited_invoices else 'OR' }}</InvoiceClass>
+                <InvoiceClass>{{ 'OO' if not invoice.credited_invoices and not corrective else 'OR' }}</InvoiceClass>
                 {% if invoice.credited_invoices %}
                 <Corrective>
                     <InvoiceNumber>{{ invoice.credited_invoices and invoice.credited_invoices[0].number[:20] }}</InvoiceNumber>
@@ -131,19 +135,22 @@
             </InvoiceIssueData>
             <TaxesOutputs>
                 {% for invoice_tax in invoice.taxes_outputs %}
+                {% set tax_base = -1*invoice_tax.base if corrective else invoice_tax.base %}
+                {% set tax_amount = -1*invoice_tax.amount if corrective else invoice_tax.amount %}
+		{% set taxes.outputs = taxes.outputs + tax_amount %}
                 <Tax>
                     <TaxTypeCode>{{ invoice_tax.tax.report_type }}</TaxTypeCode>
                     <TaxRate>{{ Decimal(invoice_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</TaxRate>
                     <TaxableBase>
-                        <TotalAmount>{{ invoice_tax.base }}</TotalAmount>
+                        <TotalAmount>{{ tax_base }}</TotalAmount>
                         {% if invoice.currency != euro %}
-                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.base, euro) }}</EquivalentInEuros>
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, tax_base, euro) }}</EquivalentInEuros>
                         {% endif %}
                     </TaxableBase>
                     <TaxAmount>
-                        <TotalAmount>{{ invoice_tax.amount }}</TotalAmount>
+                        <TotalAmount>{{ tax_amount }}</TotalAmount>
                         {% if invoice.currency != euro %}
-                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.amount, euro) }}</EquivalentInEuros>
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, tax_amount, euro) }}</EquivalentInEuros>
                         {% endif %}
                     </TaxAmount>
                     {# TODO: special taxes not supported
@@ -154,9 +161,9 @@
                     {# TODO: EquivalenceSurchace must to have its own Tax entry or it must to go to the IVA line? TaxRate == EquivalenceSurcharge and TaxAmount == EquivalenceSurchargeAmount? #}
                     <EquivalenceSurcharge>{{ Decimal(invoice_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</EquivalenceSurcharge>
                     <EquivalenceSurchargeAmount>
-                        <TotalAmount>{{ invoice_tax.amount }}</TotalAmount>
+                        <TotalAmount>{{ tax_amount }}</TotalAmount>
                         {% if invoice.currency != euro %}
-                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.amount, euro) }}</EquivalentInEuros>
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, tax_amount, euro) }}</EquivalentInEuros>
                         {% endif %}
                     </EquivalenceSurchargeAmount>
                     {% endif %}
@@ -166,33 +173,35 @@
             {% if invoice.taxes_withheld %}
             <TaxesWithheld>
                 {% for invoice_tax in invoice.taxes_withheld %}
+                {% set tax_base = -1*invoice_tax.base if corrective else invoice_tax.base %}
+                {% set tax_amount = -1*invoice_tax.amount if corrective else invoice_tax.amount %}
+		{% set taxes.withheld = taxes.withheld + tax_amount %}
                 <Tax>
                     <TaxTypeCode>{{ invoice_tax.tax.report_type }}</TaxTypeCode>
                     <TaxRate>{{ Decimal(invoice_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</TaxRate>
                     <TaxableBase>
-                        <TotalAmount>{{ invoice_tax.base }}</TotalAmount>
+                        <TotalAmount>{{ tax_base }}</TotalAmount>
                         {% if invoice.currency != euro %}
-                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.base, euro) }}</EquivalentInEuros>
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, tax_base, euro) }}</EquivalentInEuros>
                         {% endif %}
                     </TaxableBase>
                     <TaxAmount>
-                        <TotalAmount>{{ invoice_tax.amount }}</TotalAmount>
+                        <TotalAmount>{{ tax_amount }}</TotalAmount>
                         {% if invoice.currency != euro %}
-                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice_tax.amount, euro) }}</EquivalentInEuros>
+                        <EquivalentInEuros>{{ Currency.compute(invoice.currency, tax_amount, euro) }}</EquivalentInEuros>
                         {% endif %}
                     </TaxAmount>
                 </Tax>
                 {% endfor %}
-            </TaxesWithheld>
             {% endif %}
             <InvoiceTotals>
-                <TotalGrossAmount>{{ invoice.untaxed_amount }}</TotalGrossAmount>
+                <TotalGrossAmount>{{ untaxed_amount }}</TotalGrossAmount>
                 {# TODO: GeneralDiscounts and TotalGeneralDiscounts (account_invoice_discount_global) not supported #}
                 {# TODO: GeneralSurcharges and TotalGeneralSurcharges not supported #}
-                <TotalGrossAmountBeforeTaxes>{{ invoice.untaxed_amount }}</TotalGrossAmountBeforeTaxes>
-                <TotalTaxOutputs>{{ invoice.taxes_outputs | sum(attribute='amount', start=Decimal('0.00')) }}</TotalTaxOutputs>
-                <TotalTaxesWithheld>{{ invoice.taxes_withheld | sum(attribute='amount', start=Decimal('0.00')) }}</TotalTaxesWithheld>
-                <InvoiceTotal>{{ invoice.total_amount }}</InvoiceTotal>
+                <TotalGrossAmountBeforeTaxes>{{ untaxed_amount }}</TotalGrossAmountBeforeTaxes>
+                <TotalTaxOutputs>{{ taxes.outputs }}</TotalTaxOutputs>
+                <TotalTaxesWithheld>{{ taxes.withheld }}</TotalTaxesWithheld>
+                <InvoiceTotal>{{ total_amount }}</InvoiceTotal>
                 {# TODO: optional, not supported
                 - Subsidies
                 - PaymentsOnAccount, TotalPaymentsOnAccount
@@ -200,11 +209,14 @@
                 - TotalFinancialExpenses (account_payment_type_cost?)
                 - AmountsWithheld
                 #}
-                <TotalOutstandingAmount>{{ invoice.total_amount }}</TotalOutstandingAmount>
-                <TotalExecutableAmount>{{ invoice.total_amount }}</TotalExecutableAmount>
+                <TotalOutstandingAmount>{{ total_amount }}</TotalOutstandingAmount>
+                <TotalExecutableAmount>{{ total_amount }}</TotalExecutableAmount>
             </InvoiceTotals>
             <Items>
                 {% for line in invoice.lines if line.type == 'line' %}
+                {% set line_quantity = -1*line.quantity if corrective and line.quantity < 0 else line.quantity %}
+                {% set line_unit_price = -1*line.unit_price if corrective and line.unit_price < 0 else line.unit_price %}
+                {% set line_amount = -1*line.amount if corrective else line.amount %}
                 <InvoiceLine>
                     {# TODO: optional, not supported
                     - Issuer/ReceiverContractReference, Issuer/ReceiverContractDate (contract)
@@ -229,15 +241,15 @@
                     </DeliveryNotesReferences>
                     {% endif %}
                     <ItemDescription>{{ line.description and line.description[:2500] or '' }}</ItemDescription>
-                    <Quantity>{{ line.quantity }}</Quantity>
+                    <Quantity>{{ line_quantity }}</Quantity>
                     <UnitOfMeasure>{{ UOM_CODE2TYPE.get(line.unit.symbol, '05') if line.unit else '05' }}</UnitOfMeasure>
-                    <UnitPriceWithoutTax>{{ Decimal(line.unit_price).quantize(Decimal('0.000001')) }}</UnitPriceWithoutTax>
-                    <TotalCost>{{ Decimal(line.amount).quantize(Decimal('0.000001')) }}</TotalCost>
+                    <UnitPriceWithoutTax>{{ Decimal(line_unit_price).quantize(Decimal('0.000001')) }}</UnitPriceWithoutTax>
+                    <TotalCost>{{ Decimal(line_amount).quantize(Decimal('0.000001')) }}</TotalCost>
                     {# TODO: optional, not supported
                     - DiscountsAndRebates (account_invoice_discount)
                     - Charges
                     #}
-                    <GrossAmount>{{ Decimal(line.amount).quantize(Decimal('0.000001')) }}</GrossAmount>
+                    <GrossAmount>{{ Decimal(line_amount).quantize(Decimal('0.000001')) }}</GrossAmount>
                     {% if line.taxes_withheld %}
                     <TaxesWithheld>
                         {% for line_tax in invoice.taxes_withheld %}
@@ -245,15 +257,15 @@
                             <TaxTypeCode>{{ line_tax.tax.report_type }}</TaxTypeCode>
                             <TaxRate>{{ Decimal(line_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</TaxRate>
                             <TaxableBase>
-                                <TotalAmount>{{ Decimal(line.amount).quantize(Decimal('0.01')) }}</TotalAmount>
+                                <TotalAmount>{{ Decimal(line_amount).quantize(Decimal('0.01')) }}</TotalAmount>
                                 {% if invoice.currency != euro %}
-                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount, euro) }}</EquivalentInEuros>
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line_amount, euro) }}</EquivalentInEuros>
                                 {% endif %}
                             </TaxableBase>
                             <TaxAmount>
-                                <TotalAmount>{{ Decimal(line.amount * line_tax.tax.rate).quantize(Decimal('0.01')) }}</TotalAmount>
+                                <TotalAmount>{{ Decimal(line_amount * line_tax.tax.rate).quantize(Decimal('0.01')) }}</TotalAmount>
                                 {% if invoice.currency != euro %}
-                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line_amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
                                 {% endif %}
                             </TaxAmount>
                         </Tax>
@@ -266,15 +278,15 @@
                             <TaxTypeCode>{{ line_tax.tax.report_type }}</TaxTypeCode>
                             <TaxRate>{{ Decimal(line_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</TaxRate>
                             <TaxableBase>
-                                <TotalAmount>{{ Decimal(line.amount).quantize(Decimal('0.01')) }}</TotalAmount>
+                                <TotalAmount>{{ Decimal(line_amount).quantize(Decimal('0.01')) }}</TotalAmount>
                                 {% if invoice.currency != euro %}
-                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount, euro) }}</EquivalentInEuros>
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line_amount, euro) }}</EquivalentInEuros>
                                 {% endif %}
                             </TaxableBase>
                             <TaxAmount>
-                                <TotalAmount>{{ Decimal(line.amount * line_tax.tax.rate).quantize(Decimal('0.01')) }}</TotalAmount>
+                                <TotalAmount>{{ Decimal(line_amount * line_tax.tax.rate).quantize(Decimal('0.01')) }}</TotalAmount>
                                 {% if invoice.currency != euro %}
-                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line_amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
                                 {% endif %}
                             </TaxAmount>
                             {# TODO: special taxes not supported
@@ -285,9 +297,9 @@
                             {# TODO: EquivalenceSurchace must to have its own Tax entry or it must to go to the IVA line? TaxRate == EquivalenceSurcharge and TaxAmount == EquivalenceSurchargeAmount? #}
                             <EquivalenceSurcharge>{{ Decimal(line_tax.tax.rate * 100).quantize(Decimal('0.01')) }}</EquivalenceSurcharge>
                             <EquivalenceSurchargeAmount>
-                                <TotalAmount>{{ Decimal(line.amount * line_tax.tax.rate).quantize(Decimal('0.01')) }}</TotalAmount>
+                                <TotalAmount>{{ Decimal(line_amount * line_tax.tax.rate).quantize(Decimal('0.01')) }}</TotalAmount>
                                 {% if invoice.currency != euro %}
-                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line.amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
+                                <EquivalentInEuros>{{ Currency.compute(invoice.currency, line_amount * line_tax.tax.rate, euro) }}</EquivalentInEuros>
                                 {% endif %}
                             </EquivalenceSurchargeAmount>
                             {% endif %}
