@@ -9,13 +9,13 @@ from trytond.pool import Pool
 from trytond.transaction import Transaction
 from trytond.tests.test_tryton import ModuleTestCase, with_transaction
 from trytond.modules.account.tests import get_fiscalyear, create_chart
-from trytond.modules.company.tests import create_company, set_company
+from trytond.modules.company.tests import create_company, set_company, CompanyTestMixin
 from trytond.modules.account_invoice.tests import set_invoice_sequences
 from trytond.modules.currency.tests import create_currency, add_currency_rate
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
+class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase):
     'Test Account Invoice Facturae Electronet module'
     module = 'account_invoice_facturae_electronet'
 
@@ -24,6 +24,7 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
         'Test invoice generation'
 
         pool = Pool()
+        Certificate = pool.get('certificate')
         Account = pool.get('account.account')
         FiscalYear = pool.get('account.fiscalyear')
         Invoice = pool.get('account.invoice')
@@ -67,11 +68,6 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
         company.party.save()
         company.save()
 
-        # Save certificate into company
-        with open(os.path.join(
-                    CURRENT_PATH, 'certificate.pfx'), 'rb') as cert_file:
-            company.facturae_certificate = cert_file.read()
-
         payment_term, = PaymentTerm.create([{
                     'name': '20 days, 40 days',
                     'lines': [
@@ -97,6 +93,14 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
                     }])
 
         with set_company(company):
+            certificate = Certificate()
+            certificate.name = 'dummy Certificate'
+            # Save certificate
+            with open(os.path.join(
+                        CURRENT_PATH, 'certificate.pfx'), 'rb') as cert_file:
+                certificate.pem_certificate = cert_file.read()
+            certificate.save()
+
             create_chart(company, tax=True)
 
             fiscalyear = set_invoice_sequences(get_fiscalyear(company))
@@ -127,7 +131,7 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
 
             company_address, = company.party.addresses
             company_address.street = 'street'
-            company_address.zip = '08201'
+            company_address.postal_code = '08201'
             company_address.city = 'City'
             company_address.subdivision = subdivision
             company_address.country = country
@@ -150,7 +154,7 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
                 'party': party.id,
                 'street': 'St sample, 15',
                 'city': 'City',
-                'zip': '08201',
+                'postal_code': '08201',
                 'subdivision': subdivision.id,
                 'country': country.id,
                 'electronet_sale_point': 'TEST',
@@ -197,45 +201,49 @@ class AccountInvoiceFacturaeElectronetTestCase(ModuleTestCase):
             currency = create_currency('Eur')
             add_currency_rate(currency, 1)
 
-            with Transaction().set_user(0):
-                invoice = Invoice()
-                invoice.type = 'out'
-                invoice.on_change_type()
-                invoice.party = party
-                invoice.on_change_party()
-                invoice.payment_type = payment_receivable
-                invoice.payment_term = term
-                invoice.currency = currency
-                invoice.company = company
-                invoice.account = invoice.on_change_with_account()
+            invoice = Invoice()
+            invoice.type = 'out'
+            invoice.on_change_type()
+            invoice.party = party
+            invoice.on_change_party()
+            invoice.payment_type = payment_receivable
+            invoice.payment_term = term
+            invoice.currency = currency
+            invoice.company = company
+            invoice._update_account()
 
-                line1 = InvoiceLine()
-                line1.product = product
-                line1.on_change_product()
-                line1.on_change_account()
-                line1.quantity = 5
-                line1.unit_price = Decimal('40')
+            line1 = InvoiceLine()
+            line1.type = 'line'
+            line1.invoice_type = 'out'
+            line1.currency = invoice.currency
+            line1.company = invoice.company
+            line1.product = product
+            line1.on_change_product()
+            line1.on_change_account()
+            line1.quantity = 5
+            line1.unit_price = Decimal('40')
 
-                line2 = InvoiceLine()
-                line2.account = revenue
-                line2.on_change_account()
-                line2.product = product
-                line2.on_change_product()
-                line2.description = 'Test'
-                line2.quantity = 1
-                line2.unit_price = Decimal(20)
+            line2 = InvoiceLine()
+            line2.type = 'line'
+            line2.invoice_type = 'out'
+            line2.currency = invoice.currency
+            line2.company = invoice.company
+            line2.account = revenue
+            line2.on_change_account()
+            line2.product = product
+            line2.on_change_product()
+            line2.description = 'Test'
+            line2.quantity = 1
+            line2.unit_price = Decimal(20)
 
-                invoice.lines = [line1, line2]
-                invoice.on_change_lines()
+            invoice.lines = [line1, line2]
+            invoice.on_change_lines()
 
-                invoice.save()
-                Invoice.post([invoice])
+            invoice.save()
+            Invoice.post([invoice])
 
-            Invoice.generate_facturae_electronet([invoice])
+            invoice.generate_facturae()
+            self.assertNotEqual(invoice.invoice_facturae, None)
+            self.assertEqual(invoice.invoice_facturae_filename, 'facturae-1.xsig')
 
-
-def suite():
-    suite = trytond.tests.test_tryton.suite()
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(
-            AccountInvoiceFacturaeElectronetTestCase))
-    return suite
+del ModuleTestCase
