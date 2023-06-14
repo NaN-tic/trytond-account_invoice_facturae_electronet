@@ -33,25 +33,14 @@ class Invoice(metaclass=PoolMeta):
             sale_points[invoice.id] = sale_point
         return sale_points
 
-    @classmethod
-    def generate_facturae_electronet(cls, invoices, certificate_password=None):
-        to_write = ([],)
-        for invoice in invoices:
-            if invoice.invoice_facturae:
-                continue
-            facturae_content = invoice.get_facturae()
-            schema_file_path = os.path.join(MODULE_PATH,
-                ELECTRONET_TEMPLATE_SCHEMA)
-            invoice._validate_facturae(facturae_content, schema_file_path)
-            invoice_facturae = str(facturae_content)
-            fname = '%s/%s' % (ELECTRONET,
-                invoice.invoice_facturae_filename.replace('.xsig', '.xml'))
-            with open(fname, 'w', encoding='utf-8') as output_file:
-                output_file.write(invoice_facturae)
-            to_write[0].append(invoice)
-            to_write += ({'invoice_facturae': invoice_facturae},)
-        if to_write:
-            cls.write(*to_write)
+    def send_facturae_electronet(self):
+        if self.invoice_facturae_sent:
+            return
+        invoice_facturae = self.invoice_facturae
+        fname = '%s/%s' % (ELECTRONET,
+            self.invoice_facturae_filename.replace('.xsig', '.xml'))
+        with open(fname, 'w', encoding='utf-8') as output_file:
+            output_file.write(invoice_facturae)
 
     def get_facturae(self):
         for party in (self.party, self.company.party):
