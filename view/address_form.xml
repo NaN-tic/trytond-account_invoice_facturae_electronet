@@ -6,5 +6,7 @@ this repository contains the full copyright notices and license terms. -->
         <newline/>
         <label name="electronet_sale_point"/>
         <field name="electronet_sale_point"/>
+        <label name="id_electronet"/>
+        <field name="id_electronet"/>
     </xpath>
 </data>
