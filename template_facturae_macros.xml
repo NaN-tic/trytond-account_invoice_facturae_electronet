@@ -1,21 +1,39 @@
-{% macro administrative_center(centre_code, role_type_code, party) %}
+{% macro administrative_center(centre_code, role_type_code, person_type, addrs) %}
         <AdministrativeCentre>
             <CentreCode>{{ centre_code }}</CentreCode>
             <RoleTypeCode>{{ role_type_code }}</RoleTypeCode>
-            {{ address(party.addresses[0]) }}
-            {{ contact(party) }}
+            <Name>{% if person_type == 'J' %}{{ addrs.party.name and addrs.party.name[:40] }}{% else %}{{ addrs.party.name and addrs.party.name.split(' ', 2)[0][:40] or addrs.party.code[:40] }}{% endif %}</Name>
+            {% if person_type == 'F' %}
+            <FirstSurname>{{ addrs.party.name and addrs.party.name.split(' ', 2)[1][:40] }}</FirstSurname>
+            {% endif %}
+            {% if person_type == 'F' and addrs.party.name.split(' ') | length > 2 %}
+            <SecondSurname>{{ addrs.party.name and addrs.party.name.split(' ', 2)[2][:40] }}</SecondSurname>
+            {% endif %}
+            {% if addrs %}{{ address(addrs) }}{% endif %}
+            {% if addrs.party.contact_mechanisms %}{{ contact(addrs.party) }}{% endif %}
+            <PhysicalGLN/>
             <LogicalOperationalPoint/>
+            <CentreDescription>{{ addrs.party.name and addrs.party.name.split(' ', 2)[0][:40] or addrs.party.code[:40] }}</CentreDescription>
         </AdministrativeCentre>
 {% endmacro %}
 
 {% macro address(address) %}
-    <AddressInSpain>
-        <Address>{{ address.street[:80] }}</Address>
-        <PostCode>{{ address.postal_code[:5] }}</PostCode>
-        <Town>{{ address.city[:50] }}</Town>
-        <Province>{{ address.subdivision.name[:20] }}</Province>
-        <CountryCode>{{ address.country.code3 }}</CountryCode>
-    </AddressInSpain>
+    {% if address.country and address.country.code == 'ES' %}
+        <AddressInSpain>
+            <Address>{{ address.street[:80] }}</Address>
+            <PostCode>{{ address.postal_code[:5] }}</PostCode>
+            <Town>{{ address.city[:50] }}</Town>
+            <Province>{{ address.subdivision.name[:20] }}</Province>
+            <CountryCode>{{ address.country.code3 }}</CountryCode>
+        </AddressInSpain>
+        {% else %}
+        <OverseasAddress>
+            <Address>{{ address.street[:80] }}</Address>
+            <PostCodeAndTown>{{ (', '.join([address.postal_code, address.city]))[:50] }}</PostCodeAndTown>
+            <Province>{{ address.subdivision.name[:20] }}</Province>
+            <CountryCode>{{ address.country.code3 }}</CountryCode>
+        </OverseasAddress>
+    {% endif %}
 {% endmacro %}
 
 {% macro contact(party) %}
@@ -26,11 +44,31 @@
             {% if party.fax %}
             <TeleFax>{{ party.fax[:15] }}</TeleFax>
             {% endif %}
+            {% if party.website %}
+            <WebAddress>{{ party.website[:60] }}</WebAddress>
+            {% endif %}
             {% if party.email %}
             <ElectronicMail>{{ party.email[:60] }}</ElectronicMail>
             {% endif %}
-            {% if party.addresses[0].name %}
-            <ContactPersons>if party.addresses[0].name</ContactPersons>
-            {% endif %}
+            {# Optional: not supported
+            <ContactPersons></ContactPersons>
+            <CnoCnae></CnoCnae>
+            <INETownCode></INETownCode>
+            <AdditionalContactDetails></AdditionalContactDetails>
+            #}
         </ContactDetails>
+{% endmacro %}
+
+{% macro registration_data(company) %}
+    {% if company.registration_data_location %}
+        <RegistrationData>
+            <Book>{{ company.registration_data_book and company.registration_data_book[:20] or '0' }}</Book>
+            <RegisterOfCompaniesLocation>{{ company.registration_data_location[:20] }}</RegisterOfCompaniesLocation>
+            <Sheet>{{ company.registration_data_sheet[:20] }}</Sheet>
+            <Folio>{{ company.registration_data_folio[:20] }}</Folio>
+            <Section>{{ company.registration_data_section[:20] }}</Section>
+            <Volume>{{ company.registration_data_volume[:20] }}</Volume>
+            <AdditionalRegistrationData>{{ company.registration_data_additional[:20] }}</AdditionalRegistrationData>
+        </RegistrationData>
+    {% endif %}
 {% endmacro %}

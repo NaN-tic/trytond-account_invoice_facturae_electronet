@@ -1,10 +1,9 @@
+
 # The COPYRIGHT file at the top level of this repository contains the full
 # copyright notices and license terms.
-# import doctest
+
 import os.path
-import unittest
 from decimal import Decimal
-import trytond.tests.test_tryton
 from trytond.pool import Pool
 from trytond.transaction import Transaction
 from trytond.tests.test_tryton import ModuleTestCase, with_transaction
@@ -24,6 +23,7 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
         'Test invoice generation'
 
         pool = Pool()
+        Configuration = pool.get('account.configuration')
         Certificate = pool.get('certificate')
         Account = pool.get('account.account')
         FiscalYear = pool.get('account.fiscalyear')
@@ -58,39 +58,21 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
         company.header = 'Report Header'
         company.party.name = 'Seller'
         company.party.identifiers = [tax_identifier]
-        company.party.facturae_person_type = 'J'
-        company.party.facturae_residence_type = 'R'
-        company.party.organo_proponente = 'Test Organo Proponente'
-        company.party.id_electronet = '100_SELLER'
-        company.party.organo_gestor = 'TEST'
-        company.party.unidad_tramitadora = 'TEST'
-        company.party.organo_proponente = 'TEST'
+        company.facturae_person_type = 'J'
+        company.facturae_residence_type = 'R'
+        company.id_electronet = '100'
         company.party.save()
         company.save()
 
-        payment_term, = PaymentTerm.create([{
-                    'name': '20 days, 40 days',
-                    'lines': [
-                        ('create', [{
-                                    'sequence': 0,
-                                    'type': 'percent',
-                                    'divisor': 2,
-                                    'ratio': Decimal('.5'),
-                                    'relativedeltas': [('create', [{
-                                                    'days': 20,
-                                                    },
-                                                ]),
-                                        ],
-                                    }, {
-                                    'sequence': 1,
-                                    'type': 'remainder',
-                                    'relativedeltas': [('create', [{
-                                                    'days': 40,
-                                                    },
-                                                ]),
-                                        ],
-                                    }])]
-                    }])
+        address, = company.party.addresses
+        address.facturae_person_type = 'J'
+        address.facturae_residence_type = 'R'
+        address.organo_proponente = 'Test Organo Proponente'
+        address.id_electronet = '100'
+        address.organo_gestor = 'TEST'
+        address.unidad_tramitadora = 'TEST'
+        address.organo_proponente = 'TEST'
+        company.party.addresses[0].save()
 
         with set_company(company):
             certificate = Certificate()
@@ -137,13 +119,6 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
             company_address.country = country
             company_address.save()
             party = Party(name='Buyer')
-            party.facturae_person_type = 'J'
-            party.facturae_residence_type = 'R'
-            party.id_electronet = '100_BUYER'
-            party.organo_proponente = 'Test Organo Proponente'
-            party.organo_gestor = 'TEST'
-            party.unidad_tramitadora = 'TEST'
-            party.organo_proponente = 'TEST'
             tax_identifier = PartyIdentifier()
             tax_identifier.type = 'eu_vat'
             tax_identifier.code = 'BE0897290877'
@@ -158,6 +133,12 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
                 'subdivision': subdivision.id,
                 'country': country.id,
                 'electronet_sale_point': 'TEST',
+                'facturae_person_type': 'J',
+                'facturae_residence_type': 'R',
+                'id_electronet': '101',
+                'organo_proponente': 'Test Organo Proponente',
+                'organo_gestor': 'TEST',
+                'unidad_tramitadora': 'TEST',
                 }
 
             address, = Address.create([address_dict])
@@ -201,46 +182,51 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
             currency = create_currency('Eur')
             add_currency_rate(currency, 1)
 
-            invoice = Invoice()
-            invoice.type = 'out'
-            invoice.on_change_type()
-            invoice.party = party
-            invoice.on_change_party()
-            invoice.payment_type = payment_receivable
-            invoice.payment_term = term
-            invoice.currency = currency
-            invoice.company = company
-            invoice._update_account()
+            configuration = Configuration(1)
+            configuration.facturae_service = 'only_file'
+            configuration.save()
 
-            line1 = InvoiceLine()
-            line1.type = 'line'
-            line1.invoice_type = 'out'
-            line1.currency = invoice.currency
-            line1.company = invoice.company
-            line1.product = product
-            line1.on_change_product()
-            line1.on_change_account()
-            line1.quantity = 5
-            line1.unit_price = Decimal('40')
+            with Transaction().set_user(0):
+                invoice = Invoice()
+                invoice.type = 'out'
+                invoice.on_change_type()
+                invoice.party = party
+                invoice.on_change_party()
+                invoice.payment_type = payment_receivable
+                invoice.payment_term = term
+                invoice.currency = currency
+                invoice.company = company
+                invoice._update_account()
 
-            line2 = InvoiceLine()
-            line2.type = 'line'
-            line2.invoice_type = 'out'
-            line2.currency = invoice.currency
-            line2.company = invoice.company
-            line2.account = revenue
-            line2.on_change_account()
-            line2.product = product
-            line2.on_change_product()
-            line2.description = 'Test'
-            line2.quantity = 1
-            line2.unit_price = Decimal(20)
+                line1 = InvoiceLine()
+                line1.type = 'line'
+                line1.invoice_type = 'out'
+                line1.currency = invoice.currency
+                line1.company = invoice.company
+                line1.product = product
+                line1.on_change_product()
+                line1.on_change_account()
+                line1.quantity = 5
+                line1.unit_price = Decimal('40')
 
-            invoice.lines = [line1, line2]
-            invoice.on_change_lines()
+                line2 = InvoiceLine()
+                line2.type = 'line'
+                line2.invoice_type = 'out'
+                line2.currency = invoice.currency
+                line2.company = invoice.company
+                line2.account = revenue
+                line2.on_change_account()
+                line2.product = product
+                line2.on_change_product()
+                line2.description = 'Test'
+                line2.quantity = 1
+                line2.unit_price = Decimal(20)
 
-            invoice.save()
-            Invoice.post([invoice])
+                invoice.lines = [line1, line2]
+                invoice.on_change_lines()
+
+                invoice.save()
+                Invoice.post([invoice])
 
             invoice.generate_facturae()
             self.assertNotEqual(invoice.invoice_facturae, None)

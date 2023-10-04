@@ -13,8 +13,9 @@ __all__ = ['Invoice', 'GenerateFacturaeStart']
 ELECTRONET = config.get('electronet', 'facturae_path', default='/tmp')
 ELECTRONET_TEMPLATE = 'template_facturae_3.2.xml'
 ELECTRONET_TEMPLATE_SCHEMA = 'Facturaev3_2.xsd'
-MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 
+def module_path():
+    return os.path.dirname(os.path.abspath(__file__))
 
 class Invoice(metaclass=PoolMeta):
     __name__ = 'account.invoice'
@@ -47,7 +48,7 @@ class Invoice(metaclass=PoolMeta):
             missing_fields = set()
             for field in ('oficina_contable', 'organo_gestor',
                     'unidad_tramitadora'):
-                if not getattr(party, field, False):
+                if not getattr(party.addresses[0], field, False):
                     missing_fields.add(field)
 
             if len(missing_fields) > 2:
@@ -55,7 +56,7 @@ class Invoice(metaclass=PoolMeta):
                 raise UserError(gettext('missing_facturae_party_info',
                         party=party.rec_name,
                         field=fields))
-            if not party.id_electronet:
+            if not party.addresses[0].id_electronet:
                 raise UserError(gettext('missing_facturae_party_info',
                         party=party.rec_name,
                         field='ID Electronet'))
@@ -66,14 +67,16 @@ class Invoice(metaclass=PoolMeta):
                         field='Electronet Sale Point'))
 
         jinja_env = Environment(
-            loader=FileSystemLoader(MODULE_PATH),
+            loader=FileSystemLoader(module_path()),
             trim_blocks=True,
             lstrip_blocks=True,
             )
-        jinja_template = self._get_jinja_template(jinja_env,
-            ELECTRONET_TEMPLATE)
-        return jinja_template.render(
+        template = ELECTRONET_TEMPLATE
+        return self._get_jinja_template(jinja_env, template).render(
             self._get_content_to_render(), ).encode('utf-8')
+
+    def _get_jinja_template(self, jinja_env, template):
+        return jinja_env.get_template(template)
 
 
 class GenerateFacturaeStart(metaclass=PoolMeta):
