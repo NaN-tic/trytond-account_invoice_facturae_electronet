@@ -1,8 +1,8 @@
-{% from "template_facturae_macros.xml" import administrative_center, address, contact %}
+{% from "template_facturae_macros.xml" import administrative_center, address, contact, registration_data %}
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-<namespace:Facturae xmlns:namespace2="http://uri.etsi.org/01903/v1.2.2#" xmlns:namespace3="http://www.w3.org/2000/09/xmldsig#" xmlns:namespace="http://www.facturae.es/Facturae/2009/v3.2/Facturae">
+<namespace:Facturae xmlns:namespace="http://www.facturae.gob.es/formato/Versiones/Facturaev3_2_2.xml" xmlns:namespace2="http://uri.etsi.org/01903/v1.2.2#" xmlns:namespace3="http://www.w3.org/2000/09/xmldsig#">
     <FileHeader>
-        <SchemaVersion>3.2</SchemaVersion>
+        <SchemaVersion>3.2.2</SchemaVersion>
         <Modality>I</Modality>
         {# The invoice is signed by Issuer (the company, only supported out invoices) #}
         <InvoiceIssuerType>EM</InvoiceIssuerType>
@@ -11,26 +11,26 @@
             <BatchIdentifier>{{ ('%s%s' % (invoice.company.party.tax_identifier.code, invoice.number))[:70] }}</BatchIdentifier>
             <InvoicesCount>1</InvoicesCount>
             <TotalInvoicesAmount>
-                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                <TotalAmount>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</TotalAmount>
                 {% if invoice.currency != euro %}
                 <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
                 {% endif %}
             </TotalInvoicesAmount>
             <TotalOutstandingAmount>
                 {# TODO: it must to get amount_to_pay? #}
-                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                <TotalAmount>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</TotalAmount>
                 {% if invoice.currency != euro %}
                 <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
                 {% endif %}
             </TotalOutstandingAmount>
             <TotalExecutableAmount>
                 {# TODO: it must to get amount_to_pay? #}
-                <TotalAmount>{{ invoice.total_amount }}</TotalAmount>
+                <TotalAmount>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</TotalAmount>
                 {% if invoice.currency != euro %}
                 <EquivalentInEuros>{{ Currency.compute(invoice.currency, invoice.total_amount, euro) }}</EquivalentInEuros>
                 {% endif %}
             </TotalExecutableAmount>
-            <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>
+            <InvoiceCurrencyCode>{{ invoice.currency.code.upper() }}</InvoiceCurrencyCode>
         </Batch>
         {# FactoryAssignmentData optional: not supported (factoring not supported) #}
     </FileHeader>
@@ -38,21 +38,31 @@
     <Parties>
         <SellerParty>
             <TaxIdentification>
-                <PersonTypeCode>{{ invoice.company.party.facturae_person_type }}</PersonTypeCode>
-                <ResidenceTypeCode>R</ResidenceTypeCode>
+                <PersonTypeCode>{{ invoice.company.facturae_person_type }}</PersonTypeCode>
+                <ResidenceTypeCode>{{ invoice.company.facturae_residence_type }}</ResidenceTypeCode>
                 <TaxIdentificationNumber>{{ invoice.company.party.tax_identifier.code[:30] }}</TaxIdentificationNumber>
             </TaxIdentification>
             {# Optional. It could be the ID or the code #}
-            <PartyIdentification>{{ invoice.company.party.id_electronet }}</PartyIdentification>
+            <PartyIdentification>{{ invoice.company.id_electronet }}</PartyIdentification>
+            {% if invoice.company.oficina_contable or invoice.company.organo_gestor or invoice.company.unidad_tramitadora or invoice.company.organo_proponente %}
             <AdministrativeCentres>
-                {% if invoice.company.party.oficina_contable and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.oficina_contable.rstrip(), '01', invoice.company.party) }}{% endif %}
-                {% if invoice.company.party.organo_gestor and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.organo_gestor.rstrip(), '02', invoice.company.party) }}{% endif %}
-                {% if invoice.company.party.unidad_tramitadora and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.unidad_tramitadora.rstrip(), '03', invoice.company.party) }}{% endif %}
-                {% if invoice.company.party.organo_proponente and invoice.company.party.addresses %}{{ administrative_center(invoice.company.party.organo_proponente.replace('\n', '').rstrip(), '04', invoice.company.party) }}{% endif %}
+                {% if invoice.company.oficina_contable %}{{ administrative_center(invoice.company.oficina_contable, '01', invoice.company.facturae_person_type, invoice.company.party.address_get('invoice')) }}{% endif %}
+                {% if invoice.company.organo_gestor %}{{ administrative_center(invoice.company.organo_gestor, '02', invoice.company.facturae_person_type, invoice.company.party.address_get('invoice')) }}{% endif %}
+                {% if invoice.company.unidad_tramitadora %}{{ administrative_center(invoice.company.unidad_tramitadora, '03', invoice.company.facturae_person_type, invoice.company.party.address_get('invoice')) }}{% endif %}
+                {% if invoice.company.organo_proponente %}{{ administrative_center(invoice.company.organo_proponente, '04', invoice.company.facturae_person_type, invoice.company.party.address_get('invoice')) }}{% endif %}
             </AdministrativeCentres>
+            {% endif %}
             <LegalEntity>
                 <CorporateName>{{ invoice.company.party.name[:80] }}</CorporateName>
+                {% if invoice.company.party.trade_name %}
+                <TradeName>{{ invoice.company.party.trade_name[:40] }}</TradeName>
+                {% endif %}
+                {% if invoice.company %}
+                {{ registration_data(invoice.company) }}
+                {% endif %}
+                {% if invoice.company.party.addresses %}
                 {{ address(invoice.company.party.addresses[0]) }}
+                {% endif %}
                 {% if invoice.company.party.contact_mechanisms %}
                 {{ contact(invoice.company.party) }}
                 {% endif %}
@@ -61,29 +71,46 @@
 
         <BuyerParty>
             <TaxIdentification>
-                <PersonTypeCode>{{ invoice.party.facturae_person_type }}</PersonTypeCode>
-                <ResidenceTypeCode>R</ResidenceTypeCode>
+                <PersonTypeCode>{{ invoice.invoice_address.facturae_person_type }}</PersonTypeCode>
+                <ResidenceTypeCode>{{ invoice.invoice_address.facturae_residence_type }}</ResidenceTypeCode>
                 <TaxIdentificationNumber>{{ invoice.party.tax_identifier.code[:30] }}</TaxIdentificationNumber>
             </TaxIdentification>
             {# Optional. It could be the ID or the code #}
-            <PartyIdentification>{{ invoice.party.id_electronet }}</PartyIdentification>
+            {% if invoice.party.code and invoice.party.code | length < 10 %}
+            <PartyIdentification>{{ invoice.party.code|int or invoice.party.id }}</PartyIdentification>
+            {% endif %}
+            {% if invoice.invoice_address.oficina_contable or invoice.invoice_address.organo_gestor or invoice.invoice_address.unidad_tramitadora or invoice.invoice_address.organo_proponente %}
             <AdministrativeCentres>
-                {% if invoice.party.oficina_contable %}{{ administrative_center(invoice.party.oficina_contable, '01', invoice.party) }}{% endif %}
-                {% if invoice.party.organo_gestor %}{{ administrative_center(invoice.party.organo_gestor, '02', invoice.party) }}{% endif %}
-                {% if invoice.party.unidad_tramitadora %}{{ administrative_center(invoice.party.unidad_tramitadora, '03', invoice.party) }}{% endif %}
-                {% if invoice.sale_point_code %}{{ administrative_center(invoice.sale_point_code, '04', invoice.party) }}{% endif %}
+                {% if invoice.invoice_address.oficina_contable %}{{ administrative_center(invoice.invoice_address.oficina_contable, '01', invoice.invoice_address.facturae_person_type, invoice.invoice_address) }}{% endif %}
+                {% if invoice.invoice_address.organo_gestor %}{{ administrative_center(invoice.invoice_address.organo_gestor, '02', invoice.invoice_address.facturae_person_type, invoice.invoice_address) }}{% endif %}
+                {% if invoice.invoice_address.unidad_tramitadora %}{{ administrative_center(invoice.invoice_address.unidad_tramitadora, '03', invoice.invoice_address.facturae_person_type, invoice.invoice_address) }}{% endif %}
+                {% if invoice.sale_point_code %}{{ administrative_center(invoice.sale_point_code, '04', invoice.invoice_address.facturae_person_type, invoice.invoice_address) }}{% endif %}
             </AdministrativeCentres>
+            {% endif %}
+            {% if invoice.invoice_address.facturae_person_type == 'J' %}
             <LegalEntity>
                 <CorporateName>{{ invoice.party.name and invoice.party.name[:80] or invoice.party.code[:80] }}</CorporateName>
                 {% if invoice.party.trade_name %}
                 <TradeName>{{ invoice.party.trade_name[:40] }}</TradeName>
                 {% endif %}
-                {# RegistrationData optional: not supported #}
                 {{ address(invoice.invoice_address) }}
                 {% if invoice.party.contact_mechanisms %}
                 {{ contact(invoice.party) }}
                 {% endif %}
             </LegalEntity>
+            {% else %}
+            <Individual>
+                <Name>{{ invoice.party.name and invoice.party.name.split(' ', 2)[0][:40] or invoice.party.code[:40] }}</Name>
+                <FirstSurname>{{ invoice.party.name and invoice.party.name.split(' ', 2)[1][:40] }}</FirstSurname>
+                {% if invoice.party.name.split(' ') | length > 2 %}
+                <SecondSurname>{{ invoice.party.name and invoice.party.name.split(' ', 2)[2][:40] }}</SecondSurname>
+                {% endif %}
+                {{ address(invoice.invoice_address) }}
+                {% if invoice.party.contact_mechanisms %}
+                {{ contact(invoice.party) }}
+                {% endif %}
+            </Individual>
+            {% endif %}
         </BuyerParty>
     </Parties>
 
