@@ -43,7 +43,7 @@
                 <TaxIdentificationNumber>{{ invoice.company.party.tax_identifier.code[:30] }}</TaxIdentificationNumber>
             </TaxIdentification>
             {# Optional. It could be the ID or the code #}
-            <PartyIdentification>{{ invoice.company.id_electronet }}</PartyIdentification>
+            <PartyIdentification>{{ invoice.company.party.id_electronet }}</PartyIdentification>
             {% if invoice.company.oficina_contable or invoice.company.organo_gestor or invoice.company.unidad_tramitadora or invoice.company.organo_proponente %}
             <AdministrativeCentres>
                 {% if invoice.company.oficina_contable %}{{ administrative_center(invoice.company.oficina_contable, '01', invoice.company.facturae_person_type, invoice.company.party.address_get('invoice')) }}{% endif %}

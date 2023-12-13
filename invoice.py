@@ -56,7 +56,7 @@ class Invoice(metaclass=PoolMeta):
                 raise UserError(gettext('missing_facturae_party_info',
                         party=party.rec_name,
                         field=fields))
-            if not party.addresses[0].id_electronet:
+            if not party.id_electronet:
                 raise UserError(gettext('missing_facturae_party_info',
                         party=party.rec_name,
                         field='ID Electronet'))
