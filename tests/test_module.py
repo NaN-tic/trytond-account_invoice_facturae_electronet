@@ -60,7 +60,7 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
         company.party.identifiers = [tax_identifier]
         company.facturae_person_type = 'J'
         company.facturae_residence_type = 'R'
-        company.id_electronet = '100'
+        company.party.id_electronet = '100'
         company.party.save()
         company.save()
 
@@ -68,7 +68,7 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
         address.facturae_person_type = 'J'
         address.facturae_residence_type = 'R'
         address.organo_proponente = 'Test Organo Proponente'
-        address.id_electronet = '100'
+        company.party.id_electronet = '100'
         address.organo_gestor = 'TEST'
         address.unidad_tramitadora = 'TEST'
         address.organo_proponente = 'TEST'
@@ -122,6 +122,7 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
             tax_identifier = PartyIdentifier()
             tax_identifier.type = 'eu_vat'
             tax_identifier.code = 'BE0897290877'
+            party.id_electronet = '101'
             party.identifiers = [tax_identifier]
             party.save()
 
@@ -135,7 +136,6 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
                 'electronet_sale_point': 'TEST',
                 'facturae_person_type': 'J',
                 'facturae_residence_type': 'R',
-                'id_electronet': '101',
                 'organo_proponente': 'Test Organo Proponente',
                 'organo_gestor': 'TEST',
                 'unidad_tramitadora': 'TEST',

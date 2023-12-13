@@ -7,10 +7,8 @@ from trytond.pool import PoolMeta
 class Party(metaclass=PoolMeta):
     __name__ = 'party.party'
     id_electronet = fields.Char('Id Electronet')
-    #TODO: migrate id_electronet from party to address?
 
 
 class Address(metaclass=PoolMeta):
     __name__ = 'party.address'
     electronet_sale_point = fields.Char('Electronet Sale Point')
-    id_electronet = fields.Char('Id Electronet')
