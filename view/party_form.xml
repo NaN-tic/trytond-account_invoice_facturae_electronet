@@ -3,7 +3,7 @@
      copyright notices and license terms. -->
 <data>
     <xpath expr="/form/notebook" position="inside">
-        <page string="Facturae">
+        <page string="Facturae" id="facturae">
             <label name="id_electronet"/>
             <field name="id_electronet"/>
         </page>
