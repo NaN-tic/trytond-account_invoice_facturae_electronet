@@ -15,5 +15,10 @@
             <field name="inherit" ref="party.address_view_form"/>
             <field name="name">address_form</field>
         </record>
+        <record model="ir.ui.view" id="address_view_form_simple">
+            <field name="model">party.address</field>
+            <field name="inherit" ref="party.address_view_form_simple"/>
+            <field name="name">address_form_simple</field>
+        </record>
     </data>
 </tryton>
