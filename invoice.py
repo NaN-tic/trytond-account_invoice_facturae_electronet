@@ -52,17 +52,19 @@ class Invoice(metaclass=PoolMeta):
                     missing_fields.add(field)
 
             if len(missing_fields) > 2:
-                fields = ', '.join(missing_fields)
-                raise UserError(gettext('missing_facturae_party_info',
+                raise UserError(gettext(
+                        'account_invoice_facturae_electronet.missing_facturae_party_info',
                         party=party.rec_name,
-                        field=fields))
+                        field=', '.join(missing_fields)))
             if not party.id_electronet:
-                raise UserError(gettext('missing_facturae_party_info',
+                raise UserError(gettext(
+                        'account_invoice_facturae_electronet.missing_facturae_party_info',
                         party=party.rec_name,
                         field='ID Electronet'))
 
             if not self.invoice_address.electronet_sale_point:
-                raise UserError(gettext('missing_facturae_party_address_info',
+                raise UserError(gettext(
+                        'account_invoice_facturae_electronet.missing_facturae_party_address_info',
                         party=party.rec_name,
                         field='Electronet Sale Point'))
 
