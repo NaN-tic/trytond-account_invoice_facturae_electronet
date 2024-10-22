@@ -8,14 +8,13 @@ from jinja2 import Environment, FileSystemLoader
 from trytond.i18n import gettext
 from trytond.exceptions import UserError
 
-__all__ = ['Invoice', 'GenerateFacturaeStart']
-
 ELECTRONET = config.get('electronet', 'facturae_path', default='/tmp')
 ELECTRONET_TEMPLATE = 'template_facturae_3.2.xml'
 ELECTRONET_TEMPLATE_SCHEMA = 'Facturaev3_2.xsd'
 
 def module_path():
     return os.path.dirname(os.path.abspath(__file__))
+
 
 class Invoice(metaclass=PoolMeta):
     __name__ = 'account.invoice'
@@ -79,6 +78,12 @@ class Invoice(metaclass=PoolMeta):
 
     def _get_jinja_template(self, jinja_env, template):
         return jinja_env.get_template(template)
+
+    def _validate_facturae(self, xml_string, schema_file_path=None, service=None):
+        # in case service is electronet, not validate schema
+        if service == 'electronet':
+            return True
+        return super()._validate_facturae(xml_string, schema_file_path, service)
 
 
 class GenerateFacturaeStart(metaclass=PoolMeta):
