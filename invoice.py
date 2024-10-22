@@ -41,6 +41,8 @@ class Invoice(metaclass=PoolMeta):
             self.invoice_facturae_filename.replace('.xsig', '.xml'))
         with open(fname, 'w', encoding='utf-8') as output_file:
             output_file.write(invoice_facturae)
+        self.invoice_facturae_sent = True
+        self.save()
 
     def get_facturae(self):
         for party in (self.party, self.company.party):
