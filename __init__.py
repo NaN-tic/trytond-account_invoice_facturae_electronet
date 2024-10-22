@@ -5,6 +5,7 @@ from trytond.pool import Pool
 from . import invoice
 from . import party
 from . import company
+from . import configuration
 
 
 def register():
@@ -14,4 +15,5 @@ def register():
         party.Party,
         party.Address,
         company.Company,
+        configuration.ConfigurationFacturae,
         module='account_invoice_facturae_electronet', type_='model')
