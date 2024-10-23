@@ -39,7 +39,7 @@ class Invoice(metaclass=PoolMeta):
         invoice_facturae = self.invoice_facturae
         filename = self.invoice_facturae_filename.replace('.xsig', '.xml')
         # With format avoid problems with space in files or directory names
-        fname = f'"{ELECTRONET}/{filename}"'
+        fname = '%s/%s' % (ELECTRONET, filename)
         with open(fname, 'wb') as output_file:
             output_file.write(invoice_facturae)
         self.invoice_facturae_sent = True
