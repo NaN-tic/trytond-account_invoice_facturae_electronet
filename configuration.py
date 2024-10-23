@@ -8,5 +8,5 @@ class ConfigurationFacturae(metaclass=PoolMeta):
 
     @classmethod
     def __setup__(cls):
-        super(ConfigurationFacturae, cls).__setup__()
+        super().__setup__()
         cls.facturae_service.selection += [('electronet', 'Electronet')]
