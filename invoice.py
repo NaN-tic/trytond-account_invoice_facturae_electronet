@@ -37,9 +37,10 @@ class Invoice(metaclass=PoolMeta):
         if self.invoice_facturae_sent:
             return
         invoice_facturae = self.invoice_facturae
-        fname = '%s/%s' % (ELECTRONET,
-            self.invoice_facturae_filename.replace('.xsig', '.xml'))
-        with open(fname, 'w', encoding='utf-8') as output_file:
+        filename = self.invoice_facturae_filename.replace('.xsig', '.xml')
+        # With format avoid problems with space in files or directory names
+        fname = f'"{ELECTRONET}/{filename}"'
+        with open(fname, 'wb') as output_file:
             output_file.write(invoice_facturae)
         self.invoice_facturae_sent = True
         self.save()
