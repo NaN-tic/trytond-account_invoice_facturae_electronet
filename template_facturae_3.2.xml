@@ -252,16 +252,18 @@
                     - Extensions
                     #}
                     {% if line.shipments %}
-                    {% for shipment in line.shipments %}
-                    <ReceiverTransactionReference>{{ shipment.origin_reference or '' }}</ReceiverTransactionReference>
-                    {% endfor %}
-                    <DeliveryNotesReferences>
-                    {% for shipment in line.shipments %}
-                        <DeliveryNote>
-                            <DeliveryNoteNumber>{{ shipment.number or '' }}</DeliveryNoteNumber>
-                        </DeliveryNote>
-                    {% endfor %}
-                    </DeliveryNotesReferences>
+                      {% for move in line.stock_moves %}
+                        {% if move.shipment %}
+                          <ReceiverTransactionReference>{{ move.shipment.origin_reference or '' }}</ReceiverTransactionReference>
+                        {% endif %}
+                      {% endfor %}
+                      <DeliveryNotesReferences>
+                      {% for shipment in line.shipments %}
+                          <DeliveryNote>
+                              <DeliveryNoteNumber>{{ shipment }}</DeliveryNoteNumber>
+                          </DeliveryNote>
+                      {% endfor %}
+                      </DeliveryNotesReferences>
                     {% endif %}
                     <ItemDescription>{{ line.description and line.description[:2500] or '' }}</ItemDescription>
                     <Quantity>{{ line_quantity }}</Quantity>
