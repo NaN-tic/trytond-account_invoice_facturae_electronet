@@ -251,17 +251,19 @@
                     - TransactionDate
                     - Extensions
                     #}
-                    {% if line.shipments %}
+                    {% if line.stock_moves %}
                       {% for move in line.stock_moves %}
                         {% if move.shipment %}
                           <ReceiverTransactionReference>{{ move.shipment.origin_reference or '' }}</ReceiverTransactionReference>
                         {% endif %}
                       {% endfor %}
                       <DeliveryNotesReferences>
-                      {% for shipment in line.shipments %}
+                      {% for move in line.stock_moves %}
+                        {% if move.shipment %}
                           <DeliveryNote>
-                              <DeliveryNoteNumber>{{ shipment }}</DeliveryNoteNumber>
+                              <DeliveryNoteNumber>{{ move.shipment.number or '' }}</DeliveryNoteNumber>
                           </DeliveryNote>
+                        {% endif %}
                       {% endfor %}
                       </DeliveryNotesReferences>
                     {% endif %}
