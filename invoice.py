@@ -88,6 +88,9 @@ class Invoice(metaclass=PoolMeta):
             return True
         return super()._validate_facturae(xml_string, schema_file_path, service)
 
+    def _sign_facturae(self, xml_string, service='default', certificate=None):
+        return xml_string
+
 
 class GenerateFacturaeStart(metaclass=PoolMeta):
     __name__ = 'account.invoice.generate_facturae.start'
