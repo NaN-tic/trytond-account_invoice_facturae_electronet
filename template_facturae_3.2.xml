@@ -3,7 +3,7 @@
 {% set untaxed_amount = invoice.untaxed_amount|abs %}
 {% set total_amount = invoice.total_amount|abs %}
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-<namespace:Facturae xmlns:namespace="http://www.facturae.gob.es/formato/Versiones/Facturaev3_2_2.xml" xmlns:namespace2="http://uri.etsi.org/01903/v1.2.2#" xmlns:namespace3="http://www.w3.org/2000/09/xmldsig#">
+<fe:Facturae xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:fe="http://www.facturae.es/Facturae/2009/v3.2/Facturae" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <FileHeader>
         <SchemaVersion>3.2.2</SchemaVersion>
         <Modality>I</Modality>
@@ -385,4 +385,4 @@
         </Invoice>
     </Invoices>
     {# Extensions optional, not supported #}
-</namespace:Facturae>
+</fe:Facturae>
