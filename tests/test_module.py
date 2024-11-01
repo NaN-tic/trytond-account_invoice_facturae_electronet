@@ -228,7 +228,7 @@ class AccountInvoiceFacturaeElectronetTestCase(CompanyTestMixin, ModuleTestCase)
                 invoice.save()
                 Invoice.post([invoice])
 
-            invoice.generate_facturae()
+            invoice.generate_facturae(service='electronet')
             self.assertNotEqual(invoice.invoice_facturae, None)
             self.assertEqual(invoice.invoice_facturae_filename, 'facturae-1.xsig')
 
