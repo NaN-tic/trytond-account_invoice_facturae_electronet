@@ -2,7 +2,7 @@
 # this repository contains the full copyright notices and license terms.
 from trytond.pool import PoolMeta
 from trytond.model import fields
-from trytond.config import config
+import trytond.config as config
 import os
 from jinja2 import Environment, FileSystemLoader
 from trytond.i18n import gettext
